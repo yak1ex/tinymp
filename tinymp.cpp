@@ -115,6 +115,7 @@ class tinymp
 	bool is_zero() const {
 		return v.size() == 1 && v[0] == 0;
 	}
+	// FIXME: exception safety
 	tinymp& from_chars(const char* p, std::size_t size) {
 		if(size == 0) return *this; // might be better to throw
 		auto it = p, it_end = p + size;
@@ -216,6 +217,7 @@ public:
 			tinymp r;
 			r.v.resize(v.size() - other.v.size() + 1);
 			tinymp residual(*this);
+			residual.nonneg = true;
 			for(std::size_t i = 0; i < r.v.size(); ++i) {
 				std::size_t idxr = r.v.size() - i - 1;
 				if(residual.v.size() < idxr + other.v.size() || residual.absless(other.v, idxr)) continue;
@@ -225,7 +227,7 @@ public:
 				}
 				res += residual.v[idxr + other.v.size() - 1];
 				widen_type top = other.v.back();
-				if(0 <= idxr + other.v.size() - 2 && other.v.size() - 2 >= 0) {
+				if(2 <= idxr + other.v.size() && other.v.size() >= 2) {
 					std::size_t bres = std::numeric_limits<widen_type>::digits - 1;
 					while(!((widen_type(1) << bres) & res) && bres > 0) --bres;
 					std::size_t btop = std::numeric_limits<widen_type>::digits - 1;
@@ -333,7 +335,7 @@ public:
 	template<char ... c>
 	friend inline tinymp operator"" _tmp();
 	// I/O
-	// FIXME: exception safety
+	friend inline tinymp stotmp(const std::string &s);
 	friend inline std::istream& operator>>(std::istream &is, tinymp& v) {
 		std::string s;
 		is >> s;
@@ -360,5 +362,8 @@ template<char ... c>
 inline tinymp operator"" _tmp()
 {
 	std::string s({c...});
+	return std::move(tinymp().from_chars(s.data(), s.size()));
+}
+inline tinymp stotmp(const std::string &s) {
 	return std::move(tinymp().from_chars(s.data(), s.size()));
 }
