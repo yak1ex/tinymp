@@ -2,6 +2,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/data/monomorphic.hpp>
+#include <boost/timer/timer.hpp>
 
 template<typename T>
 inline T mygcd(T m, T n)
@@ -15,7 +16,10 @@ inline T mygcd(T m, T n)
 	return std::move(m);
 }
 
-#include "tinymp.cpp"
+#pragma GCC diagnostic ignored "-Wmisleading-indentation"
+#include "tinymp.minify.cpp"
+//#include "tinymp.cpp"
+#pragma GCC diagnostic warning "-Wmisleading-indentation"
 
 using std::to_string;
 namespace bdata = boost::unit_test::data;
@@ -24,6 +28,7 @@ tinymp vals[] = { -10000000000000000000000_tmp, -1_tmp, 0, 1, 100000000000000000
 
 BOOST_AUTO_TEST_CASE( tinymp_arith )
 {
+	const std::size_t digits = 100; // arbitrary
 	BOOST_TEST( to_string(tinymp(0xFFFFFFFFUL)+tinymp(0xFFFFFFFFUL)) == "8589934590" );
 	BOOST_TEST( to_string(-tinymp(0xFFFFFFFFUL)+-tinymp(0xFFFFFFFFUL)) == "-8589934590" );
 	BOOST_TEST( to_string(tinymp(0xFFFFFFFFUL)+tinymp(0xFFFFFFFFUL)+tinymp(0)) == "8589934590" );
@@ -37,26 +42,64 @@ BOOST_AUTO_TEST_CASE( tinymp_arith )
 	BOOST_TEST( to_string(-12345678901234567890123467890_tmp) ==  "-12345678901234567890123467890" );
 	BOOST_TEST( to_string(-1234567890_tmp + 12345678901234567890_tmp) == "12345678900000000000" );
 	BOOST_TEST( to_string(10_tmp * 10_tmp) == "100" );
+	
 	BOOST_TEST( to_string(100000000000000000000_tmp  * 10000000000_tmp)  == "1000000000000000000000000000000" );
 	BOOST_TEST( to_string(100000000000000000000_tmp  * -10000000000_tmp) == "-1000000000000000000000000000000" );
 	BOOST_TEST( to_string(-100000000000000000000_tmp * 10000000000_tmp)  == "-1000000000000000000000000000000" );
 	BOOST_TEST( to_string(-100000000000000000000_tmp * -10000000000_tmp) == "1000000000000000000000000000000" );
-	BOOST_TEST( to_string(10000000000000000001_tmp    / 1000000000_tmp)    == "10000000000" );
-	BOOST_TEST( to_string(10000000000000000001_tmp    % 1000000000_tmp)    == "1" );
-	BOOST_TEST( to_string(10000000000000000001_tmp    / -1000000000_tmp)   == "-10000000000" );
-	BOOST_TEST( to_string(10000000000000000001_tmp    % -1000000000_tmp)   == "1" );
-	BOOST_TEST( to_string(-10000000000000000001_tmp   / 1000000000_tmp)    == "-10000000000" );
-	BOOST_TEST( to_string(-10000000000000000001_tmp   % 1000000000_tmp)    == "1" );
-	BOOST_TEST( to_string(-10000000000000000001_tmp   / -1000000000_tmp)   == "10000000000" );
-	BOOST_TEST( to_string(-10000000000000000001_tmp   % -1000000000_tmp)   == "1" );
-	BOOST_TEST( to_string(10000000000000000001_tmp    / 1000000000)        == "10000000000" );
-	BOOST_TEST( to_string(10000000000000000001_tmp    % 1000000000)        == "1" );
-	BOOST_TEST( to_string(100000000000000000001_tmp   / 10000000000_tmp)   == "10000000000" );
-	BOOST_TEST( to_string(100000000000000000001_tmp   % 10000000000_tmp)   == "1" );
-	BOOST_TEST( to_string(1000000000000000000001_tmp  / 100000000000_tmp)  == "10000000000" );
-	BOOST_TEST( to_string(1000000000000000000001_tmp  % 100000000000_tmp)  == "1" );
-	BOOST_TEST( to_string(10000000000000000000001_tmp / 1000000000000_tmp) == "10000000000" );
-	BOOST_TEST( to_string(10000000000000000000001_tmp % 1000000000000_tmp) == "1" );
+	tinymp t(100);
+	unsigned int n = 10;
+	for(std::size_t i = 2; i <= std::numeric_limits<unsigned int>::digits10; ++i) {
+		BOOST_TEST_CONTEXT( "i = " << to_string(i) ) {
+			BOOST_TEST( to_string( (t+1) /  n) == "10" );
+			BOOST_TEST( to_string( (t+1) %  n) == "1" );
+			BOOST_TEST( to_string(-(t+1) /  n) == "-10" );
+			BOOST_TEST( to_string(-(t+1) %  n) == "-1" );
+		}
+		t *= 10;
+		n *= 10;
+	}
+	t = 100;
+	tinymp t2 = 10;
+	for(std::size_t i = 2; i < digits; ++i) { 
+		BOOST_TEST_CONTEXT( "i = " << to_string(i) ) {
+			BOOST_TEST( to_string( (t+1) /  t2) == "10" );
+			BOOST_TEST( to_string( (t+1) %  t2) == "1" );
+			BOOST_TEST( to_string(-(t+1) /  t2) == "-10" );
+			BOOST_TEST( to_string(-(t+1) %  t2) == "-1" );
+			BOOST_TEST( to_string( (t+1) / -t2) == "-10" );
+			BOOST_TEST( to_string( (t+1) % -t2) == "1" );
+			BOOST_TEST( to_string(-(t+1) / -t2) == "10" );
+			BOOST_TEST( to_string(-(t+1) % -t2) == "-1" );
+		}
+		t *= 10;
+		t2 = t2 * 10;
+	}
+	t2 = tinymp(10);
+	for(std::size_t i = 2; i < digits; ++i) {
+		t = t2 * 10;
+		std::string s("10");
+		for(std::size_t j = i + 1; j < digits; ++j) {
+			BOOST_TEST_CONTEXT( "i = " << to_string(i) << ", j = " << j) {
+				std::string ms = std::string("-") + s;
+				BOOST_TEST( to_string( (t+1) /  t2) == s );
+				BOOST_TEST( to_string( (t+1) %  t2) == "1" );
+				BOOST_TEST( to_string(-(t+1) /  t2) == ms );
+				BOOST_TEST( to_string(-(t+1) %  t2) == "-1" );
+				BOOST_TEST( to_string( (t+1) / -t2) == ms );
+				BOOST_TEST( to_string( (t+1) % -t2) == "1" );
+				BOOST_TEST( to_string(-(t+1) / -t2) == s );
+				BOOST_TEST( to_string(-(t+1) % -t2) == "-1" );
+			}
+			t *= 10;
+			s += "0";
+		}
+		t2 *= 10;
+	}
+	BOOST_TEST( 100_tmp .mult(100_tmp) == 10000_tmp );
+	BOOST_TEST( 1000000000000_tmp .mult(1000000000000_tmp) == 1000000000000000000000000_tmp );
+	BOOST_TEST( 10000000000000000000000_tmp .mult(10000000000000000000000_tmp) == 100000000000000000000000000000000000000000000_tmp );
+
 	BOOST_TEST( to_string(mygcd(10000000000000000000001_tmp, 1000000000000_tmp)) == "1" );
 	BOOST_TEST( to_string(mygcd(11111111111111111111_tmp, 1111111111_tmp)) ==  "1111111111" );
 
@@ -110,15 +153,75 @@ BOOST_AUTO_TEST_CASE( tinymp_io )
 	BOOST_TEST( to_string(123456789012345678901234567890_tmp) == "123456789012345678901234567890" );
 }
 
-#if 0
-// Core i7-3720QM 2.6GHz 1,000,000 times => 43s
-BOOST_AUTO_TEST_CASE( tinymp_time )
+BOOST_AUTO_TEST_CASE( tinymp_time, *boost::unit_test::disabled() )
 {
-	tinymp p1 = 359334085968622831041960188598043661065388726959079837_tmp;
-	tinymp p2 = 265252859812191058636308479999999_tmp;
-	tinymp p3 = 8683317618811886495518194401279999999_tmp;
-	for(int i = 0; i < 1000000; ++i ) {
-		BOOST_TEST( p1 * p2 * p3 / p1 / p2 / p3 == 1 );
+	BOOST_TEST_MESSAGE( "[multiplication for same size]" );
+	for(std::size_t i = 40; i <= 800; i+= 40) {
+		std::ostringstream oss;
+		tinymp t1(1);
+		for(std::size_t j = 0; j < i; ++j) t1 *= 10;
+		tinymp t2(t1);
+		{
+			boost::timer::auto_cpu_timer t(oss, "%w");
+			for(int j = 0; j < 100000; ++j ) {
+				BOOST_TEST( t1 * t2 > 0 );
+			}
+		}
+		BOOST_TEST_MESSAGE( i << ":" << oss.str() << "s" );
+	}
+	BOOST_TEST_MESSAGE( "[multiplication by Karatsuba for same size]" );
+	for(std::size_t i = 40; i <= 800; i+= 40) {
+		std::ostringstream oss;
+		tinymp t1(1);
+		for(std::size_t j = 0; j < i; ++j) t1 *= 10;
+		tinymp t2(t1);
+		{
+			boost::timer::auto_cpu_timer t(oss, "%w");
+			for(int j = 0; j < 10000; ++j ) {
+				BOOST_TEST( t1.mult(t2) > 0 );
+			}
+		}
+		BOOST_TEST_MESSAGE( i << ":" << oss.str() << "s" );
+	}
+	BOOST_TEST_MESSAGE( "[division for changing width-difference and constant-width-divisor]" );
+	std::string base;
+	for(std::size_t i = 0; i < 60; ++i) { base += "123456789"; }
+	for(std::size_t i = 20; i <= 400; i+= 20) {
+		std::ostringstream oss;
+		tinymp t1 = stotmp(base.substr(i%9, 100+i+i%9));
+		tinymp t2 = stotmp(base.substr(i%9, 100+i%9));
+		{
+			boost::timer::auto_cpu_timer t(oss, "%w");
+			for(int j = 0; j < 100000; ++j ) {
+				BOOST_TEST( t1 / t2 >= 0 );
+			}
+		}
+		BOOST_TEST_MESSAGE( i << ":" << oss.str() << "s" );
+	}
+	BOOST_TEST_MESSAGE( "[division for 100-width-difference and changing divisor]" );
+	for(std::size_t i = 20; i <= 400; i+= 20) {
+		std::ostringstream oss;
+		tinymp t1 = stotmp(base.substr(i%9, 100+i+i%9));
+		tinymp t2 = stotmp(base.substr(i%9, i+i%9));
+		{
+			boost::timer::auto_cpu_timer t(oss, "%w");
+			for(int j = 0; j < 100000; ++j ) {
+				BOOST_TEST( t1 / t2 >= 0 );
+			}
+		}
+		BOOST_TEST_MESSAGE( i << ":" << oss.str() << "s" );
+	}
+	BOOST_TEST_MESSAGE( "[division for changing width-difference and divisor]" );
+	for(std::size_t i = 20; i <= 200; i+= 20) {
+		std::ostringstream oss;
+		tinymp t1 = stotmp(base.substr(i%9, i+i+i%9));
+		tinymp t2 = stotmp(base.substr(i%9, i+i%9));
+		{
+			boost::timer::auto_cpu_timer t(oss, "%w");
+			for(int j = 0; j < 100000; ++j ) {
+				BOOST_TEST( t1 / t2 >= 0 );
+			}
+		}
+		BOOST_TEST_MESSAGE( i << ":" << oss.str() << "s" );
 	}
 }
-#endif
