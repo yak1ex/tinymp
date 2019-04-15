@@ -44,7 +44,7 @@ class tinymp_
 			riterator(const offseter *p_, std::size_t pos_) : p(p_), pos(pos_) {}
 			reference operator*() { return pos >= p->offset + 1 ? p->start[pos - p->offset - 1] : zero(); }
 			riterator& operator++() { --pos; return *this; }
-			riterator operator++(int) { riterator r(*this); --pos; return std::move(r); }
+			riterator operator++(int) { riterator r(*this); --pos; return r; /* NRVO */ }
 			bool operator==(const riterator& other) const { return p == other.p && pos == other.pos; }
 			bool operator!=(const riterator& other) const { return !(*this == other); }
 		};
@@ -165,7 +165,7 @@ class tinymp_
 			r.v[0] = ret & 0xFFFFFFFF;
 			r.v.push_back(ret >> 32);
 			r.normalize();
-			return std::move(r);
+			return r; // NRVO
 		} else {
 			std::size_t len1 = end1 - begin1, len2 = end2 - begin2;
 			std::size_t N = (std::max(len1, len2) + 1) / 2;
@@ -182,7 +182,7 @@ class tinymp_
 			r.addsub(A.v, false, N);
 			r.addsub(C.v, false, N);
 			r.addsub(C.v, true, 0);
-			return std::move(r);
+			return r; // NRVO
 		}
 	}
 	template<typename InIt>
@@ -238,7 +238,8 @@ public:
 	}
 	tinymp_ operator-() const {
 		tinymp_ r(*this);
-		return std::move(r.flip_());
+		r.flip_();
+		return r; // NRVO
 	}
 	// arithmetic binary operator helper
 	std::pair<tinymp_&, tinymp_> div_(elem_type s) {
@@ -264,10 +265,11 @@ public:
 	}
 	std::pair<tinymp_, tinymp_> div(const tinymp_& other) const {
 		// TODO: check Knuth algorithm
+		std::pair<tinymp_, tinymp_> p{{}, *this};
 		if(!(absless(other))) {
-			tinymp_ r;
+			tinymp_& r = p.first;
 			r.v.resize(v.size() - other.v.size() + 1);
-			tinymp_ residual(*this);
+			tinymp_ & residual = p.second;
 			residual.nonneg = true;
 			for(std::size_t i = 0; i < r.v.size(); ++i) {
 				std::size_t idxr = r.v.size() - i - 1;
@@ -306,18 +308,16 @@ public:
 			r.normalize();
 			r.nonneg = !(nonneg ^ other.nonneg);
 			if(!nonneg) residual.flip_();
-			return { std::move(r), residual };
-		} else {
-			return { {}, *this };
 		}
+		return p;
 	}
 	tinymp_ mult(const tinymp_& other) const {
 		// faster for 800len * 800len order
 		return mult(v.begin(), v.end(), other.v.begin(), other.v.end());
 	}
 	// arithmetic binary operators
-	friend inline tinymp_ operator+(tinymp_ v1, const tinymp_ &v2) {
-		return std::move(v1 += v2);
+	friend inline tinymp_ operator+(const tinymp_ &v1, const tinymp_ &v2) {
+		tinymp_ r(v1); r += v2; return r;
 	}
 	friend inline tinymp_ operator-(tinymp_ v1, const tinymp_ &v2) {
 		return std::move(v1 -= v2);
@@ -339,7 +339,7 @@ public:
 		}
 		r.normalize();
 		r.nonneg = !(v1.nonneg ^ v2.nonneg);
-		return std::move(r);
+		return r; // NRVO
 	}
 	friend inline tinymp_ operator/(tinymp_ other, elem_type s) {
 		return std::move(other /= s);
