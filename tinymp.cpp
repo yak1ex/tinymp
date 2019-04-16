@@ -150,10 +150,11 @@ class tinymp_
 		os << (nonneg ? '+' : '-') << std::endl;
 	}
 	// Karatsuba algorithm
-	tinymp_ mult(vector_type::const_iterator begin1, vector_type::const_iterator end1, vector_type::const_iterator begin2, vector_type::const_iterator end2) const {
-		return mult_imp(begin1, end1, begin2, end2);
+	static tinymp_ mult(vector_type::const_iterator begin1, vector_type::const_iterator end1, vector_type::const_iterator begin2, vector_type::const_iterator end2) {
+		return mult_imp(begin1, end1, begin2, end2); // RVO
 	}
-	tinymp_ mult_imp(vector_type::const_iterator begin1, vector_type::const_iterator end1, vector_type::const_iterator begin2, vector_type::const_iterator end2) const {
+	static tinymp_ mult_imp(vector_type::const_iterator begin1, vector_type::const_iterator end1, vector_type::const_iterator begin2, vector_type::const_iterator end2) {
+		tinymp_ r;
 		if(end1 - begin1 <= 1 && end2 - begin2 <= 1) {
 			widen_type v1 = begin1 == end1 ? 0 : *begin1;
 			widen_type v2 = begin2 == end2 ? 0 : *begin2;
@@ -161,11 +162,9 @@ class tinymp_
 			widen_type B = ((v1 & 0xFFFF) + (v1 >> 16)) * ((v2 & 0xFFFF) + (v2 >> 16));
 			widen_type C = (v1 & 0xFFFF) * (v2 & 0xFFFF);
 			widen_type ret = (A << 32) + ((B - A - C) << 16) + C;
-			tinymp_ r;
 			r.v[0] = ret & 0xFFFFFFFF;
 			r.v.push_back(ret >> 32);
 			r.normalize();
-			return r; // NRVO
 		} else {
 			std::size_t len1 = end1 - begin1, len2 = end2 - begin2;
 			std::size_t N = (std::max(len1, len2) + 1) / 2;
@@ -176,21 +175,21 @@ class tinymp_
 			c.addsub(begin2 + std::min(N, len2), begin2 + std::min(2*N, len2), true, 0);
 			auto B = mult(a.v.begin(), a.v.end(), c.v.begin(), c.v.end());
 			auto C = mult(begin1, begin1 + std::min(N, len1), begin2, begin2 + std::min(N, len2));
-			tinymp_ r;
 			r.addsub(A.v, true, N*2);
 			r.addsub(B.v, true, N);
 			r.addsub(A.v, false, N);
 			r.addsub(C.v, false, N);
 			r.addsub(C.v, true, 0);
-			return r; // NRVO
 		}
+		return r; // NRVO
 	}
 	template<typename InIt>
 	tinymp_(InIt it1, InIt it2): v(it1, it2), nonneg(true) {
 		if(v.size() == 0) v.push_back(0);
 	}
 public:
-	tinymp_(elem_type val = 0): v(1, val), nonneg(true) {}
+	tinymp_(elem_type val = 0, bool nonneg_ = true): v(1, val), nonneg(val == 0 || nonneg_ ) {}
+	tinymp_(const char* p, std::size_t sz) { from_chars(p, sz); }
 	// compound assignments
 	tinymp_& operator+=(const tinymp_& other) {
 		addsub(other.v, other.nonneg);
@@ -251,9 +250,7 @@ public:
 			borrow = temp % s;
 		}
 		normalize();
-		tinymp_ remainder(borrow);
-		if(!nonneg) remainder.flip_();
-		return { *this, std::move(remainder) };
+		return { std::piecewise_construct, std::forward_as_tuple(*this), std::forward_as_tuple(borrow, nonneg) };
 	}
 	std::pair<tinymp_, tinymp_> div(elem_type s) const {
 		return tinymp_(*this).div_(s);
@@ -261,11 +258,11 @@ public:
 	std::pair<tinymp_&, tinymp_> div_(const tinymp_& other) {
 		auto t = tinymp_(*this).div(other);
 		*this = std::move(t.first);
-		return { *this, std::move(t.second) };
+		return { std::piecewise_construct, std::forward_as_tuple(*this), std::forward_as_tuple(std::move(t.second)) };
 	}
 	std::pair<tinymp_, tinymp_> div(const tinymp_& other) const {
 		// TODO: check Knuth algorithm
-		std::pair<tinymp_, tinymp_> p{{}, *this};
+		std::pair<tinymp_, tinymp_> p{ std::piecewise_construct, std::forward_as_tuple(), std::forward_as_tuple(*this) };
 		if(!(absless(other))) {
 			tinymp_& r = p.first;
 			r.v.resize(v.size() - other.v.size() + 1);
@@ -341,17 +338,17 @@ public:
 		r.nonneg = !(v1.nonneg ^ v2.nonneg);
 		return r; // NRVO
 	}
-	friend inline tinymp_ operator/(tinymp_ other, elem_type s) {
-		return std::move(other /= s);
+	friend inline tinymp_ operator/(const tinymp_ &other, elem_type s) {
+		tinymp_ r(other); r /= s; return r; // NRVO
 	}
-	friend inline tinymp_ operator/(tinymp_ v1, const tinymp_ &v2) {
-		return std::move(v1 /= v2);
+	friend inline tinymp_ operator/(const tinymp_ &v1, const tinymp_ &v2) {
+		tinymp_ r(v1); r /= v2; return r; // NRVO
 	}
-	friend inline tinymp_ operator%(tinymp_ other, elem_type s) {
-		return std::move(other.div_(s).second);
+	friend inline tinymp_ operator%(const tinymp_ &other, elem_type s) {
+		return tinymp_(other).div_(s).second;
 	}
-	friend inline tinymp_ operator%(tinymp_ v1, const tinymp_ &v2) {
-		return std::move(v1.div_(v2).second);
+	friend inline tinymp_ operator%(const tinymp_ &v1, const tinymp_ &v2) {
+		return tinymp_(v1).div_(v2).second;
 	}
 	// TODO: increment/decrement
 	// TODO: shift
@@ -393,11 +390,11 @@ public:
 	static inline tinymp_ literal()
 	{
 		std::string s({c...});
-		return std::move(tinymp_().from_chars(s.data(), s.size()));
+		return tinymp_(s.data(), s.size()); // RVO
 	}
 	// I/O
 	static inline tinymp_ stotmp(const std::string &s) {
-		return std::move(tinymp_().from_chars(s.data(), s.size()));
+		return tinymp_(s.data(), s.size()); // RVO
 	}
 	friend inline std::istream& operator>>(std::istream &is, tinymp_& v) {
 		std::string s;
@@ -414,9 +411,9 @@ public:
 			while(!v.is_zero()) { auto t = v.div_(10); s.push_back(t.second.v[0] + '0'); }
 			std::reverse(s.begin() + (negative ? 1 : 0), s.end());
 		}
-		return std::move(s);
+		return s; // NRVO
 	}
-	friend inline std::ostream& operator<<(std::ostream &os, tinymp_ v) {
+	friend inline std::ostream& operator<<(std::ostream &os, const tinymp_& v) {
 		return os << to_string(v);
 	}
 };
@@ -424,9 +421,9 @@ typedef tinymp_<std::allocator<unsigned int> > tinymp;
 template<char ... c>
 inline tinymp operator"" _tmp()
 {
-	return tinymp::literal<c...>();
+	return tinymp::literal<c...>(); // RVO
 }
 inline tinymp stotmp(const std::string& s)
 {
-	return tinymp::stotmp(s);
+	return tinymp::stotmp(s); // RVO
 }

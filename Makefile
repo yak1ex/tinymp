@@ -10,6 +10,9 @@ run: all
 runall: all
 	./ut.exe --color_output=yes --log_level=message --run_test=\*
 
+log: all
+	./ut.exe --color_output=no --log_level=message --run_test=\* > `date +%Y%m%d%H%M%S`.txt 2>&1
+
 all: ut.exe tinymp.minify.cpp
 
 clean:
