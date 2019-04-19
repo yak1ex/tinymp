@@ -52,6 +52,10 @@ class tinymp
 		riterator rend() const { return riterator(this, 0); }
 		std::size_t size() const { return sz + offset; }
 	};
+	// v1 < v2 + carry
+	inline static elem_type overflow(elem_type carry, elem_type v1, elem_type v2) {
+		return carry ? v1 <= v2 : v1 < v2;
+	}
 	void addsub(vector_type::const_iterator begin, vector_type::const_iterator end, bool oneg, std::size_t offset = 0) {
 		std::size_t sz = end - begin;
 		offseter ov_(begin, end, offset);
@@ -60,13 +64,9 @@ class tinymp
 			elem_type carry = 0;
 			for(std::size_t i = 0; i < v.size() - offset; ++i) {
 				std::size_t idx = offset + i;
-				elem_type new_carry;
 				elem_type oval = idx < ov_.size() ? ov_[idx] : 0;
-				if(std::numeric_limits<elem_type>::max() - oval < v[idx] + carry) {
-					new_carry = 1;
-				} else {
-					new_carry = 0;
-				}
+				// std::numeric_limits<elem_type>::max() < v[idx] + oval + carry
+				elem_type new_carry = overflow(carry, std::numeric_limits<elem_type>::max() - oval, v[idx]);
 				v[idx] += oval + carry;
 				carry = new_carry;
 				if( i >= sz && carry == 0) break;
@@ -83,13 +83,9 @@ class tinymp
 			elem_type borrow = 0;
 			for(std::size_t i = 0; i < v.size() - offset; ++i) {
 				std::size_t idx = offset + i;
-				elem_type new_borrow;
 				elem_type rval = idx < rhs.size() ? rhs[idx] : 0;
-				if(lhs[idx] < rval + borrow) {
-					new_borrow = 1;
-				} else {
-					new_borrow = 0;
-				}
+				// lhs[idx] < rval + borrow
+				elem_type new_borrow = overflow(borrow, lhs[idx], rval);
 				v[idx] = lhs[idx] - rval - borrow;
 				borrow = new_borrow;
 				if( i >= sz && borrow == 0) break;
