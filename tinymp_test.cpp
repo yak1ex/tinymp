@@ -173,28 +173,28 @@ BOOST_AUTO_TEST_CASE( tinymp_io )
 BOOST_AUTO_TEST_CASE( tinymp_time, *boost::unit_test::disabled() )
 {
 	BOOST_TEST_MESSAGE( "[multiplication for same size]" );
-	for(std::size_t i = 40; i <= 800; i+= 40) {
+	for(std::size_t i = 400; i <= 10000; i+= 400) {
 		std::ostringstream oss;
 		tinymp t1(1);
 		for(std::size_t j = 0; j < i; ++j) t1 *= 10;
 		tinymp t2(t1);
 		{
 			boost::timer::auto_cpu_timer t(oss, "%w");
-			for(int j = 0; j < 100000; ++j ) {
+			for(int j = 0; j < 1000; ++j ) {
 				BOOST_TEST( t1 * t2 > 0 );
 			}
 		}
 		BOOST_TEST_MESSAGE( i << ":" << oss.str() << "s" );
 	}
 	BOOST_TEST_MESSAGE( "[multiplication by Karatsuba for same size]" );
-	for(std::size_t i = 40; i <= 800; i+= 40) {
+	for(std::size_t i = 400; i <= 10000; i+= 400) {
 		std::ostringstream oss;
 		tinymp t1(1);
 		for(std::size_t j = 0; j < i; ++j) t1 *= 10;
 		tinymp t2(t1);
 		{
 			boost::timer::auto_cpu_timer t(oss, "%w");
-			for(int j = 0; j < 10000; ++j ) {
+			for(int j = 0; j < 1000; ++j ) {
 				BOOST_TEST( t1.mult(t2) > 0 );
 			}
 		}
@@ -202,40 +202,40 @@ BOOST_AUTO_TEST_CASE( tinymp_time, *boost::unit_test::disabled() )
 	}
 	BOOST_TEST_MESSAGE( "[division for changing width-difference and constant-width-divisor]" );
 	std::string base;
-	for(std::size_t i = 0; i < 60; ++i) { base += "123456789"; }
-	for(std::size_t i = 20; i <= 400; i+= 20) {
+	for(std::size_t i = 0; i < 600; ++i) { base += "123456789"; }
+	for(std::size_t i = 200; i <= 4000; i+= 200) {
 		std::ostringstream oss;
 		tinymp t1 = stotmp(base.substr(i%9, 100+i+i%9));
 		tinymp t2 = stotmp(base.substr(i%9, 100+i%9));
 		{
 			boost::timer::auto_cpu_timer t(oss, "%w");
-			for(int j = 0; j < 100000; ++j ) {
+			for(int j = 0; j < 1000; ++j ) {
 				BOOST_TEST( t1 / t2 >= 0 );
 			}
 		}
 		BOOST_TEST_MESSAGE( i << ":" << oss.str() << "s" );
 	}
 	BOOST_TEST_MESSAGE( "[division for 100-width-difference and changing divisor]" );
-	for(std::size_t i = 20; i <= 400; i+= 20) {
+	for(std::size_t i = 200; i <= 4000; i+= 200) {
 		std::ostringstream oss;
 		tinymp t1 = stotmp(base.substr(i%9, 100+i+i%9));
 		tinymp t2 = stotmp(base.substr(i%9, i+i%9));
 		{
 			boost::timer::auto_cpu_timer t(oss, "%w");
-			for(int j = 0; j < 100000; ++j ) {
+			for(int j = 0; j < 1000; ++j ) {
 				BOOST_TEST( t1 / t2 >= 0 );
 			}
 		}
 		BOOST_TEST_MESSAGE( i << ":" << oss.str() << "s" );
 	}
 	BOOST_TEST_MESSAGE( "[division for changing width-difference and divisor]" );
-	for(std::size_t i = 20; i <= 200; i+= 20) {
+	for(std::size_t i = 200; i <= 2000; i+= 200) {
 		std::ostringstream oss;
 		tinymp t1 = stotmp(base.substr(i%9, i+i+i%9));
 		tinymp t2 = stotmp(base.substr(i%9, i+i%9));
 		{
 			boost::timer::auto_cpu_timer t(oss, "%w");
-			for(int j = 0; j < 100000; ++j ) {
+			for(int j = 0; j < 1000; ++j ) {
 				BOOST_TEST( t1 / t2 >= 0 );
 			}
 		}
