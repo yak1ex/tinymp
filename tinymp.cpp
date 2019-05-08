@@ -40,7 +40,9 @@ class tinymp
 		offseter(T& pv_, std::size_t offset_ = 0) : st(pv_.begin()), sz(pv_.size()), cap(pv_.capacity()), off(offset_) {}
 		template<typename U> // should limit U
 		offseter(const offseter<U>& o) : st(o.start()), sz(o.size() - o.offset()), cap(o.capacity()), off(o.offset()) {}
+#ifdef KARATSUBA
 		offseter(decltype(st) st_, decltype(st) end_, std::size_t sz_, std::size_t offset_) : st(st_), sz(sz_), cap(end_ - st_), off(offset_) {}
+#endif
 		class riterator { // lexicographical_compare() requires InputIterator
 			const offseter *p;
 			std::size_t pos; // [0, p->sz + p->offset]: (p->sz + p->off) points to p->st[p->sz - 1]
@@ -67,8 +69,10 @@ class tinymp
 		decltype(st) start() const { return st; }
 		void resize(std::size_t sz_) { if(sz_ <= cap + off && sz_ > off) { for(std::size_t idx = sz; idx < sz_ - off; ++idx) st[idx] = 0; sz = sz_ - off; } else throw std::bad_alloc(); }
 		void push_back(const value_type& t) { if(sz < cap) { st[sz] = t; ++sz; } else throw std::bad_alloc(); }
+#ifdef KARATSUBA
 		offseter offset_view(std::size_t o) const { return { st, st + sz, sz, off + o }; }
 		offseter sub_view(std::size_t s, std::size_t e) const { if(off != 0) throw std::logic_error("offset should be 0"); return { st + s, st + e, e - s, off }; }
+#endif
 		void dump(std::ostream &os) const {
 			os << "[sz:" << sz << ",cap:" << cap << ",off:" << off << ']';
 			for(std::size_t idx = 0; idx < sz; ++idx) os << ',' << st[idx];
@@ -139,6 +143,7 @@ class tinymp
 		normalize(v1);
 		return sub;
 	}
+#ifdef KARATSUBA
 	// Karatsuba algorithm
 	// At least in some environments, even for square of 10,000digits(base10) this can not outperform naive algorithm
 	static tinymp mult(const tinymp &v1, const tinymp &v2) {
@@ -206,6 +211,7 @@ class tinymp
 //		normalize(r);
 		return r; // NRVO
 	}
+#endif
 
 	bool is_zero() const {
 		return v.size() == 1 && v[0] == 0;
@@ -370,9 +376,11 @@ public:
 		}
 		return p;
 	}
+#ifdef KARATSUBA
 	tinymp mult(const tinymp& other) const {
 		return mult(*this, other);
 	}
+#endif
 	// arithmetic binary operators
 	friend inline tinymp operator+(const tinymp &v1, const tinymp &v2) {
 		tinymp r(v1); r += v2; return r;
