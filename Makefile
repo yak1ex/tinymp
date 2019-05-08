@@ -16,7 +16,7 @@ log: all
 all: ut.exe tinymp.minify.cpp
 
 clean:
-	rm *.o *.exe tinymp.minify.cpp
+	-rm *.o *.exe tinymp.minify.cpp
 
 ut.exe: tinymp_test.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ -lboost_test_exec_monitor -lboost_timer
