@@ -23,5 +23,6 @@ ut.exe: tinymp_test.o
 
 tinymp_test.o: tinymp.minify.cpp
 
+# https://github.com/Scylardor/cminify
 tinymp.minify.cpp: tinymp.cpp
 	python ./cminify/minifier.py tinymp.cpp | sed -e 's, : ,:,g;s, ? ,?,g;s, \.\.\. ,...,g' > $@
