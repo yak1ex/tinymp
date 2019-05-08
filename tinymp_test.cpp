@@ -17,7 +17,6 @@ inline T mygcd(T m, T n)
 }
 
 #pragma GCC diagnostic ignored "-Wmisleading-indentation"
-//#include "tinymp.minify.cpp"
 #include "tinymp.cpp"
 #pragma GCC diagnostic warning "-Wmisleading-indentation"
 
