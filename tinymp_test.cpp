@@ -104,6 +104,18 @@ BOOST_AUTO_TEST_CASE( tinymp_arith )
 	BOOST_TEST( 100_tmp .mult(100_tmp) == 10000_tmp );
 	BOOST_TEST( 1000000000000_tmp .mult(1000000000000_tmp) == 1000000000000000000000000_tmp );
 	BOOST_TEST( 10000000000000000000000_tmp .mult(10000000000000000000000_tmp) == 100000000000000000000000000000000000000000000_tmp );
+	tinymp t3 = 1;
+	for(std::size_t i = 1; i < 100; ++i) {
+		t3 *= 16;
+		tinymp t4 = 1;
+		for(std::size_t j = 1; j < 100; ++j) {
+			t4 *= 16;
+			tinymp t5 = t3 - 1, t6 = t4 - 1;
+			BOOST_TEST_CONTEXT( "i = " << to_string(i) << " j = " << to_string(j) ) {
+				BOOST_TEST( t5 * t6 == t5.mult(t6) );
+			}
+		}
+	}
 
 	BOOST_TEST( to_string(mygcd(10000000000000000000001_tmp, 1000000000000_tmp)) == "1" );
 	BOOST_TEST( to_string(mygcd(11111111111111111111_tmp, 1111111111_tmp)) ==  "1111111111" );
