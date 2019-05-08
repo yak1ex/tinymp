@@ -67,7 +67,7 @@ class tinymp
 		void resize(std::size_t sz_) { if(sz_ <= cap + off && sz_ > off) { for(std::size_t idx = sz; idx < sz_ - off; ++idx) st[idx] = 0; sz = sz_ - off; } else throw std::bad_alloc(); }
 		void push_back(const elem_type& t) { if(sz < cap) { st[sz] = t; ++sz; } else throw std::bad_alloc(); }
 		offseter offset_view(std::size_t o) const { return { st, st + sz, sz, off + o }; }
-		offseter sub_view(std::size_t s, std::size_t e) const { if(off != 0) throw std::logic_error("offset should be 0"); return { st + s, st + (e - s), e - s, off }; }
+		offseter sub_view(std::size_t s, std::size_t e) const { if(off != 0) throw std::logic_error("offset should be 0"); return { st + s, st + e, e - s, off }; }
 		void dump(std::ostream &os) const {
 			os << "[sz:" << sz << ",cap:" << cap << ",off:" << off << ']';
 			for(std::size_t idx = 0; idx < sz; ++idx) os << ',' << st[idx];
@@ -142,27 +142,40 @@ class tinymp
 	}
 	// Karatsuba algorithm
 	static tinymp mult(const tinymp &v1, const tinymp &v2) {
-		std::vector<elem_type> buf(std::max<std::size_t>(600, 7*std::max(v1.v.size(), v2.v.size())));
-std::cout << "alloc: " << buf.size() << std::endl;
+		std::vector<elem_type> buf(std::max<std::size_t>(700, 7*std::max(v1.v.size(), v2.v.size())));
 		auto ret = mult_imp(v1.v, v2.v, buf, 0);
 		return tinymp(ret.start(), ret.start() + ret.size()); // offset should be 0 // RVO
 	}
 	static offseter_type mult_imp(const coffseter_type &o1, const coffseter_type &o2, std::vector<elem_type> &buf, std::size_t cur) {
-		std::size_t sz = o1.size() + o2.size();
+		std::size_t N = (std::max(o1.size(), o2.size()) + 1) / 2;
+		std::size_t sz = 4 * N + 1;
 		offseter_type r(buf.begin() + cur, buf.begin() + cur + sz, 1, 0);
 		r[0] = 0;
 		cur += sz;
-		if(o1.size() <= 1 && o2.size() <= 1) {
-			widen_type v1 = o1.size() == 0 ? 0 : o1[0]; // redundant for 0
-			widen_type v2 = o2.size() == 0 ? 0 : o2[0]; // redundant for 0
+		if(o1.size() == 0 || o2.size() == 0) {
+#if 0
+		} else if(o1.size() == 1 && o2.size() == 1) {
+			widen_type v1 = o1[0];
+			widen_type v2 = o2[0];
 			widen_type A = (v1 >> 16) * (v2 >> 16);
 			widen_type B = ((v1 & 0xFFFF) + (v1 >> 16)) * ((v2 & 0xFFFF) + (v2 >> 16));
 			widen_type C = (v1 & 0xFFFF) * (v2 & 0xFFFF);
 			widen_type ret = (A << 32) + ((B - A - C) << 16) + C;
 			r[0] = ret & 0xFFFFFFFF;
 			if(ret >> 32) r.push_back(ret >> 32);
+#endif
+		} else if(o1.size() == 1 || o2.size() == 1) {
+			widen_type carry = 0;
+			const coffseter_type &o = o2.size() == 1 ? o1 : o2;
+			elem_type s = o2.size() == 1 ? o2[0] : o1[0];
+			r.resize(o2.size() == 1 ? o1.size() : o2.size());
+			for(std::size_t i = 0; i < r.size(); ++i) {
+				widen_type temp = widen_type(o[i]) * s + carry;
+				r[i] = temp;
+				carry = temp >> std::numeric_limits<elem_type>::digits;
+			}
+			if(carry != 0) r.push_back(carry);
 		} else {
-			std::size_t N = (std::max(o1.size(), o2.size()) + 1) / 2;
 			auto A = mult_imp(o1.sub_view(std::min(N, o1.size()), std::min(2*N, o1.size())), o2.sub_view(std::min(N, o2.size()), std::min(2*N, o2.size())), buf, cur);
 			add(r, A.offset_view(N*2));
 			sub(r, A.offset_view(N));
@@ -175,7 +188,6 @@ std::cout << "alloc: " << buf.size() << std::endl;
 			offseter_type c(buf.begin() + cur, buf.begin() + cur + N + 1, 1, 0);
 			c[0] = 0;
 			cur += N + 1;
-std::cout << "cur: " << cur << std::endl;
 			add(c, o2.sub_view(0, std::min(N, o2.size())));
 			add(c, o2.sub_view(std::min(N, o2.size()), std::min(2*N, o2.size())));
 			auto B = mult_imp(a, c, buf, cur);
@@ -186,7 +198,7 @@ std::cout << "cur: " << cur << std::endl;
 			sub(r, C.offset_view(N));
 			add(r, C);
 		}
-		normalize(r);
+//		normalize(r);
 		return r; // NRVO
 	}
 
@@ -473,7 +485,7 @@ inline tinymp stotmp(const std::string& s)
 	return tinymp::stotmp(s); // RVO
 }
 
-#if 1
+#if 0
 using namespace std;
 int main(void)
 {
@@ -518,9 +530,21 @@ int main(void)
 		std::cout << 100_tmp .mult(100_tmp) << std::endl;
 		std::cout << 1000000000000_tmp .mult(1000000000000_tmp) << std::endl;
 #endif
-		std::cout << 100000000000000000000000000000000000000000000000000000000000000000000000000000000_tmp
- .mult(100000000000000000000000000000000000000000000000000000000000000000000000000000000_tmp
-) << std::endl;
+		auto k = 4294967296_tmp;
+		tinymp ii(1);
+		for(int i = 0; i < 200; ++i) {
+			ii *= k;
+			tinymp jj(1);
+			for(int j = 0; j < 200; ++j) {
+				jj *= k;
+				tinymp iii(ii), jjj(jj);
+				iii -= 1;
+				jjj -= 1;
+				curmax = 0;
+				iii.mult(jjj);
+//				std::cout << i+1 << ',' << j+1 << ',' << curmax << std::endl;
+			}
+		}
 	} catch (std::exception &e) {
 		cout << e.what() << endl;
 	}
