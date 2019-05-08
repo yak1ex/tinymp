@@ -7,6 +7,7 @@
 #include <iostream>
 
 // tiny multi-precision integer class
+// distributed under the CC0-1.0
 class tinymp
 {
 	typedef unsigned int value_type;
