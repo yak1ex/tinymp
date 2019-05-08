@@ -9,10 +9,12 @@
 // tiny multi-precision integer class
 class tinymp
 {
-	typedef unsigned int elem_type;
+	typedef unsigned int value_type;
+	typedef std::numeric_limits<value_type> limits_type;
 	typedef unsigned long long widen_type;
-	typedef std::vector<elem_type> vector_type;
-	typedef const std::vector<elem_type> cvector_type;
+	typedef std::numeric_limits<widen_type> wlimits_type;
+	typedef std::vector<value_type> vector_type;
+	typedef const std::vector<value_type> cvector_type;
 	vector_type v;
 	bool nonneg;
 	void normalize() {
@@ -24,15 +26,14 @@ class tinymp
 	class offseter // minimal offset vector access
 	{
 	public:
-		typedef typename T::value_type elem_type;
 		typedef typename T::value_type value_type;
 	private:
 		decltype(std::declval<T>().begin()) st;
 		std::size_t sz; // valid digits
 		std::size_t cap;
 		std::size_t off;
-		static elem_type& zero() {
-			static elem_type zero_;
+		static value_type& zero() {
+			static value_type zero_;
 			return zero_;
 		}
 	public:
@@ -45,10 +46,10 @@ class tinymp
 			std::size_t pos; // [0, p->sz + p->offset]: (p->sz + p->off) points to p->st[p->sz - 1]
 		public:
 			typedef std::input_iterator_tag iterator_category;
-			typedef elem_type value_type;
+			typedef value_type value_type;
 			typedef std::ptrdiff_t difference_type;
-			typedef const elem_type* pointer;
-			typedef const elem_type& reference;
+			typedef const value_type* pointer;
+			typedef const value_type& reference;
 			riterator(const offseter *p_, std::size_t pos_) : p(p_), pos(pos_) {}
 			reference operator*() { return pos >= p->off + 1 ? p->st[pos - p->off - 1] : zero(); }
 			riterator& operator++() { --pos; return *this; }
@@ -56,8 +57,8 @@ class tinymp
 			bool operator==(const riterator& other) const { return p == other.p && pos == other.pos; }
 			bool operator!=(const riterator& other) const { return !(*this == other); }
 		};
-		const elem_type& operator[](std::size_t idx) const { return idx >= off ? st[idx - off] : zero(); }
-		elem_type& operator[](std::size_t idx) { return idx >= off ? st[idx - off] : zero(); }
+		const value_type& operator[](std::size_t idx) const { return idx >= off ? st[idx - off] : zero(); }
+		value_type& operator[](std::size_t idx) { return idx >= off ? st[idx - off] : zero(); }
 		riterator rbegin() const { return riterator(this, sz + off); }
 		riterator rend() const { return riterator(this, 0); }
 		std::size_t size() const { return sz + off; }
@@ -65,7 +66,7 @@ class tinymp
 		std::size_t capacity() const { return cap; }
 		decltype(st) start() const { return st; }
 		void resize(std::size_t sz_) { if(sz_ <= cap + off && sz_ > off) { for(std::size_t idx = sz; idx < sz_ - off; ++idx) st[idx] = 0; sz = sz_ - off; } else throw std::bad_alloc(); }
-		void push_back(const elem_type& t) { if(sz < cap) { st[sz] = t; ++sz; } else throw std::bad_alloc(); }
+		void push_back(const value_type& t) { if(sz < cap) { st[sz] = t; ++sz; } else throw std::bad_alloc(); }
 		offseter offset_view(std::size_t o) const { return { st, st + sz, sz, off + o }; }
 		offseter sub_view(std::size_t s, std::size_t e) const { if(off != 0) throw std::logic_error("offset should be 0"); return { st + s, st + e, e - s, off }; }
 		void dump(std::ostream &os) const {
@@ -99,12 +100,11 @@ class tinymp
 	static std::size_t offset(const offseter<T>& t) { return t.offset(); }
 	template<typename T, typename U> // T, U are vector<V> or offseter<V>
 	static void add(T &v1, const U &v2) {
-		typedef typename T::value_type elem_type;
 		if(v1.size() < v2.size()) v1.resize(v2.size());
-		elem_type carry = 0;
+		value_type carry = 0;
 		for(std::size_t idx = offset(v2); idx < v1.size(); ++idx) {
-			elem_type val = idx < v2.size() ? v2[idx] : 0;
-			elem_type new_carry = overflow(carry,  std::numeric_limits<elem_type>::max() - val,  v1[idx]);
+			value_type val = idx < v2.size() ? v2[idx] : 0;
+			value_type new_carry = overflow(carry,  limits_type::max() - val,  v1[idx]);
 			v1[idx] += val + carry;
 			carry = new_carry;
 			if(idx >= v2.size() && carry  == 0) break;
@@ -113,25 +113,24 @@ class tinymp
 	}
 	template<typename T> // T is vector<V> or offseter<V>
 	static void normalize(T &v) {
-		std::size_t idx = v.size() - 1; // size() should be more than 0
+		auto idx = v.size() - 1; // size() should be more than 0
 		for(;v[idx] == 0 && idx > 0; --idx);
 		v.resize(idx + 1);
 	}
 	template<typename T, typename U> // T, U are vector<V> or offseter<V>
 	static bool sub(T &v1, const U &v2) {
-		typedef typename T::value_type elem_type;
 		bool sub = absless(v1, v2);
 		if(v1.size() < v2.size()) v1.resize(v2.size());
 		const coffseter_type &lhs = sub ? v2 : v1;
 		const coffseter_type &rhs = sub ? v1 : v2;
 		if(lhs.offset() > rhs.offset()) throw std::invalid_argument("offset mismatch");
 		// NOTE: v1.size() == lhs.size() >= rhs.size() && lhs >= rhs
-		elem_type borrow = 0;
+		value_type borrow = 0;
 		std::size_t idx;
 		for(idx = rhs.offset(); idx < lhs.size(); ++idx) {
-			elem_type rval = idx < rhs.size() ? rhs[idx] : 0;
+			value_type rval = idx < rhs.size() ? rhs[idx] : 0;
 			// lhs[idx] < rval + borrow
-			elem_type new_borrow = overflow(borrow, lhs[idx], rval);
+			value_type new_borrow = overflow(borrow, lhs[idx], rval);
 			v1[idx] = lhs[idx] - rval - borrow;
 			borrow = new_borrow;
 			if( idx >= rhs.size() && borrow == 0) break;
@@ -141,14 +140,15 @@ class tinymp
 		return sub;
 	}
 	// Karatsuba algorithm
+	// At least in some environments, even for square of 10,000digits(base10) this can not outperform naive algorithm
 	static tinymp mult(const tinymp &v1, const tinymp &v2) {
-		std::vector<elem_type> buf(std::max<std::size_t>(700, 7*std::max(v1.v.size(), v2.v.size())));
+		vector_type buf(std::max<std::size_t>(700, 7*std::max(v1.v.size(), v2.v.size())));
 		auto ret = mult_imp(v1.v, v2.v, buf, 0);
 		return tinymp(ret.start(), ret.start() + ret.size()); // offset should be 0 // RVO
 	}
-	static offseter_type mult_imp(const coffseter_type &o1, const coffseter_type &o2, std::vector<elem_type> &buf, std::size_t cur) {
-		std::size_t N = (std::max(o1.size(), o2.size()) + 1) / 2;
-		std::size_t sz = 4 * N + 1;
+	static offseter_type mult_imp(const coffseter_type &o1, const coffseter_type &o2, vector_type &buf, std::size_t cur) {
+		auto N = (std::max(o1.size(), o2.size()) + 1) / 2;
+		auto sz = 4 * N + 1;
 		offseter_type r(buf.begin() + cur, buf.begin() + cur + sz, 1, 0);
 		r[0] = 0;
 		cur += sz;
@@ -157,44 +157,49 @@ class tinymp
 		} else if(o1.size() == 1 && o2.size() == 1) {
 			widen_type v1 = o1[0];
 			widen_type v2 = o2[0];
-			widen_type A = (v1 >> 16) * (v2 >> 16);
-			widen_type B = ((v1 & 0xFFFF) + (v1 >> 16)) * ((v2 & 0xFFFF) + (v2 >> 16));
-			widen_type C = (v1 & 0xFFFF) * (v2 & 0xFFFF);
-			widen_type ret = (A << 32) + ((B - A - C) << 16) + C;
+			auto A = (v1 >> 16) * (v2 >> 16);
+			auto B = ((v1 & 0xFFFF) + (v1 >> 16)) * ((v2 & 0xFFFF) + (v2 >> 16));
+			auto C = (v1 & 0xFFFF) * (v2 & 0xFFFF);
+			auto ret = (A << 32) + ((B - A - C) << 16) + C;
 			r[0] = ret & 0xFFFFFFFF;
 			if(ret >> 32) r.push_back(ret >> 32);
 #endif
 		} else if(o1.size() == 1 || o2.size() == 1) {
 			widen_type carry = 0;
-			const coffseter_type &o = o2.size() == 1 ? o1 : o2;
-			elem_type s = o2.size() == 1 ? o2[0] : o1[0];
+			const auto &o = o2.size() == 1 ? o1 : o2;
+			auto s = o2.size() == 1 ? o2[0] : o1[0];
 			r.resize(o2.size() == 1 ? o1.size() : o2.size());
 			for(std::size_t i = 0; i < r.size(); ++i) {
-				widen_type temp = widen_type(o[i]) * s + carry;
+				auto temp = widen_type(o[i]) * s + carry;
 				r[i] = temp;
-				carry = temp >> std::numeric_limits<elem_type>::digits;
+				carry = temp >> limits_type::digits;
 			}
 			if(carry != 0) r.push_back(carry);
 		} else {
-			auto A = mult_imp(o1.sub_view(std::min(N, o1.size()), std::min(2*N, o1.size())), o2.sub_view(std::min(N, o2.size()), std::min(2*N, o2.size())), buf, cur);
+			const auto mid1 = std::min(N, o1.size());
+			const auto last1 = std::min(2*N, o1.size());
+			const auto mid2 = std::min(N, o2.size());
+			const auto last2 = std::min(2*N, o2.size());
+
+			auto A = mult_imp(o1.sub_view(mid1, last1), o2.sub_view(mid2, last2), buf, cur);
 			add(r, A.offset_view(N*2));
 			sub(r, A.offset_view(N));
 
 			offseter_type a(buf.begin() + cur, buf.begin() + cur + N + 1, 1, 0);
 			a[0] = 0;
 			cur += N + 1;
-			add(a, o1.sub_view(0, std::min(N, o1.size())));
-			add(a, o1.sub_view(std::min(N, o1.size()), std::min(2*N, o1.size())));
+			add(a, o1.sub_view(0, mid1));
+			add(a, o1.sub_view(mid1, last1));
 			offseter_type c(buf.begin() + cur, buf.begin() + cur + N + 1, 1, 0);
 			c[0] = 0;
 			cur += N + 1;
-			add(c, o2.sub_view(0, std::min(N, o2.size())));
-			add(c, o2.sub_view(std::min(N, o2.size()), std::min(2*N, o2.size())));
+			add(c, o2.sub_view(0, mid2));
+			add(c, o2.sub_view(mid2, last2));
 			auto B = mult_imp(a, c, buf, cur);
 			add(r, B.offset_view(N));
 			cur -= 2 * N + 2;
 
-			auto C = mult_imp(o1.sub_view(0, std::min(N, o1.size())), o2.sub_view(0, std::min(N, o2.size())), buf, cur);
+			auto C = mult_imp(o1.sub_view(0, mid1), o2.sub_view(0, mid2), buf, cur);
 			sub(r, C.offset_view(N));
 			add(r, C);
 		}
@@ -209,7 +214,7 @@ class tinymp
 		if(size == 0) return *this; // might be better to throw
 		auto it = p, it_end = p + size;
 		*this = 0;
-		bool negative = false;
+		auto negative = false;
 		if(*it == '-') {
 			negative = true;
 			++it;
@@ -231,7 +236,7 @@ public:
 		}
 		os << (nonneg ? '+' : '-') << std::endl;
 	}
-	tinymp(elem_type val = 0, bool nonneg_ = true): v(1, val), nonneg(val == 0 || nonneg_ ) {}
+	tinymp(value_type val = 0, bool nonneg_ = true): v(1, val), nonneg(val == 0 || nonneg_ ) {}
 	tinymp(const char* p, std::size_t sz) { from_chars(p, sz); }
 	template<typename InIt>
 	tinymp(InIt it1, InIt it2): v(it1, it2), nonneg(true) {
@@ -256,12 +261,12 @@ public:
 		}
 		return *this;
 	}
-	tinymp& operator*=(elem_type s) {
+	tinymp& operator*=(value_type s) {
 		widen_type carry = 0;
 		for(std::size_t i = 0; i < v.size(); ++i) {
 			widen_type temp = widen_type(v[i]) * s + carry;
 			v[i] = temp;
-			carry = temp >> std::numeric_limits<elem_type>::digits;
+			carry = temp >> limits_type::digits;
 		}
 		if(carry != 0) v.push_back(carry);
 		return *this;
@@ -270,13 +275,13 @@ public:
 		*this = std::move(*this * other);
 		return *this;
 	}
-	tinymp& operator/=(elem_type s) {
+	tinymp& operator/=(value_type s) {
 		return div_(s).first;
 	}
 	tinymp& operator/=(const tinymp& other) {
 		return div_(other).first;
 	}
-	tinymp& operator%=(elem_type s) {
+	tinymp& operator%=(value_type s) {
 		*this = div_(s).second;
 		return *this;
 	}
@@ -298,8 +303,8 @@ public:
 		return r; // NRVO
 	}
 	// arithmetic binary operator helper
-	std::pair<tinymp&, tinymp> div_(elem_type s) {
-		widen_type unit = widen_type(1) << std::numeric_limits<elem_type>::digits;
+	std::pair<tinymp&, tinymp> div_(value_type s) {
+		widen_type unit = widen_type(1) << limits_type::digits;
 		widen_type borrow = 0;
 		for(std::size_t i = 0; i < v.size(); ++i) {
 			auto temp = borrow * unit + v[v.size() - i - 1];
@@ -309,7 +314,7 @@ public:
 		normalize();
 		return { std::piecewise_construct, std::forward_as_tuple(*this), std::forward_as_tuple(borrow, nonneg) };
 	}
-	std::pair<tinymp, tinymp> div(elem_type s) const {
+	std::pair<tinymp, tinymp> div(value_type s) const {
 		return tinymp(*this).div_(s);
 	}
 	std::pair<tinymp&, tinymp> div_(const tinymp& other) {
@@ -330,24 +335,24 @@ public:
 				if(residual.v.size() < idxr + other.v.size() || absless(residual.v, coffseter_type(other.v, idxr))) continue;
 				widen_type res = 0;
 				if(residual.v.size() > idxr + other.v.size()) {
-					res = widen_type(residual.v[idxr + other.v.size()]) << std::numeric_limits<elem_type>::digits;
+					res = widen_type(residual.v[idxr + other.v.size()]) << limits_type::digits;
 				}
 				res += residual.v[idxr + other.v.size() - 1];
 				widen_type top = other.v.back();
 				if(2 <= idxr + other.v.size() && other.v.size() >= 2) {
-					std::size_t bres = std::numeric_limits<widen_type>::digits;
+					auto bres = wlimits_type::digits;
 					while(bres > 0 && !((widen_type(1) << (bres-1)) & res)) --bres;
-					std::size_t btop = std::numeric_limits<widen_type>::digits;
+					auto btop = wlimits_type::digits;
 					while(btop > 0 && !((widen_type(1) << (btop-1)) & top)) --btop;
-					std::size_t bits = std::min<widen_type>(32, std::numeric_limits<widen_type>::digits - std::max(bres, btop));
+					auto bits = std::min<std::size_t>(32, wlimits_type::digits - std::max(bres, btop));
 					if(bits) {
 						res <<= bits;
-						res += residual.v[idxr + other.v.size() - 2] >> (std::numeric_limits<elem_type>::digits - bits);
+						res += residual.v[idxr + other.v.size() - 2] >> (limits_type::digits - bits);
 						top <<= bits;
-						top += other.v[other.v.size() - 2] >> (std::numeric_limits<elem_type>::digits - bits);
+						top += other.v[other.v.size() - 2] >> (limits_type::digits - bits);
 					}
 				}
-				elem_type candidate = res / top;
+				value_type candidate = res / top;
 				if(candidate > 0) --candidate;
 				auto temp = other * candidate;
 				while(!absless(residual.v, offseter_type(temp.v, idxr))) {
@@ -366,7 +371,6 @@ public:
 		return p;
 	}
 	tinymp mult(const tinymp& other) const {
-		// faster for 800len * 800len order
 		return mult(*this, other);
 	}
 	// arithmetic binary operators
@@ -376,18 +380,18 @@ public:
 	friend inline tinymp operator-(tinymp v1, const tinymp &v2) {
 		return std::move(v1 -= v2);
 	}
-	friend inline tinymp operator*(tinymp other, elem_type s) {
+	friend inline tinymp operator*(tinymp other, value_type s) {
 		return std::move(other *= s);
 	}
 	friend tinymp operator*(const tinymp &v1, const tinymp& v2) {
 		tinymp r;
-		std::vector<elem_type> tempv(2);
+		vector_type tempv(2);
 		r.v.resize(v1.v.size() + v2.v.size());
 		for(std::size_t i = 0; i < v1.v.size(); ++i) {
 			for(std::size_t j = 0; j < v2.v.size(); ++j) {
 				widen_type temp = widen_type(v1.v[i]) * v2.v[j];
 				tempv[0] = temp;
-				tempv[1] = temp >> std::numeric_limits<elem_type>::digits;
+				tempv[1] = temp >> limits_type::digits;
 				add(r.v, offseter_type(tempv, i+j));
 			}
 		}
@@ -395,13 +399,13 @@ public:
 		r.nonneg = !(v1.nonneg ^ v2.nonneg);
 		return r; // NRVO
 	}
-	friend inline tinymp operator/(const tinymp &other, elem_type s) {
+	friend inline tinymp operator/(const tinymp &other, value_type s) {
 		tinymp r(other); r /= s; return r; // NRVO
 	}
 	friend inline tinymp operator/(const tinymp &v1, const tinymp &v2) {
 		tinymp r(v1); r /= v2; return r; // NRVO
 	}
-	friend inline tinymp operator%(const tinymp &other, elem_type s) {
+	friend inline tinymp operator%(const tinymp &other, value_type s) {
 		return tinymp(other).div_(s).second;
 	}
 	friend inline tinymp operator%(const tinymp &v1, const tinymp &v2) {
@@ -484,71 +488,3 @@ inline tinymp stotmp(const std::string& s)
 {
 	return tinymp::stotmp(s); // RVO
 }
-
-#if 0
-using namespace std;
-int main(void)
-{
-	try {
-#if 0
-		vector<int> v(100);
-		iota(v.begin(), v.end(), 1);
-		offseter<vector<int>> o1(v.begin(), v.begin() + 10, 5, 2);
-		offseter<vector<int>> o2(v.begin()+10, v.begin() + 20, 5, 2);
-		cout << "---" << endl;
-		for(int i = 0; i < o1.size(); ++i) {
-			cout << i << ',' << o1[i] << endl;
-		}
-		o1.push_back(0);
-		cout << "---" << endl;
-		for(int i = 0; i < o1.size(); ++i) {
-			cout << i << ',' << o1[i] << endl;
-		}
-		add(o1, o2);
-		cout << "---" << endl;
-		for(int i = 0; i < o1.size(); ++i) {
-			cout << i << ',' << o1[i] << endl;
-		}
-		sub(o1, o2);
-		cout << "---" << endl;
-		for(int i = 0; i < o1.size(); ++i) {
-			cout << i << ',' << o1[i] << endl;
-		}
-#endif
-#if 0
-		tinymp t(1);
-		for(int i=0;i<30;++i) {
-			std::cout << t << std::endl;
-			t *= 10;
-			t += 1;
-		}
-		std::cout << t << std::endl;
-		std::cout << 12345678901234567890_tmp << std::endl;
-		(18446744073709551616_tmp).dump(std::cout);
-		(18446744073709551615_tmp).dump(std::cout);
-		std::cout << 18446744073709551616_tmp - 18446744073709551615_tmp << std::endl;
-		std::cout << 100_tmp .mult(100_tmp) << std::endl;
-		std::cout << 1000000000000_tmp .mult(1000000000000_tmp) << std::endl;
-#endif
-		auto k = 4294967296_tmp;
-		tinymp ii(1);
-		for(int i = 0; i < 200; ++i) {
-			ii *= k;
-			tinymp jj(1);
-			for(int j = 0; j < 200; ++j) {
-				jj *= k;
-				tinymp iii(ii), jjj(jj);
-				iii -= 1;
-				jjj -= 1;
-				curmax = 0;
-				iii.mult(jjj);
-//				std::cout << i+1 << ',' << j+1 << ',' << curmax << std::endl;
-			}
-		}
-	} catch (std::exception &e) {
-		cout << e.what() << endl;
-	}
-
-	return 0;
-}
-#endif
