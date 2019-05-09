@@ -154,12 +154,12 @@ public:
 				value_type candidate = res / top;
 				if(candidate > 0) --candidate;
 				auto temp = other * candidate;
-				while(!absless(residual.v, offseter_type(temp.v, idxr))) {
+				while(candidate == 0 || !absless(residual.v, offseter_type(temp.v, idxr))) {
 					++candidate;
-					temp = other * candidate;
+					temp += other;
 				}
 				--candidate;
-				temp = other * candidate;
+				temp -= other;
 				sub(residual.v, offseter_type(temp.v, idxr)); // residual -= (temp << (idxr * BITS));
 				r.v[idxr] = candidate;
 			}
