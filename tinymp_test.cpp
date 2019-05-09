@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE( tinymp_arith )
 	t = 100;
 	unsigned int n = 10;
 	for(std::size_t i = 2; i <= std::numeric_limits<unsigned int>::digits10; ++i) {
-		BOOST_TEST_CONTEXT( "i = " << to_string(i) ) {
+		BOOST_TEST_CONTEXT( "i = " << i ) {
 			BOOST_TEST( to_string( (t+1) /  n) == "10" );
 			BOOST_TEST( to_string( (t+1) %  n) == "1" );
 			BOOST_TEST( to_string(-(t+1) /  n) == "-10" );
@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE( tinymp_arith )
 	t = 100;
 	tinymp t2 = 10;
 	for(std::size_t i = 2; i < digits; ++i) { 
-		BOOST_TEST_CONTEXT( "i = " << to_string(i) ) {
+		BOOST_TEST_CONTEXT( "i = " << i ) {
 			BOOST_TEST( to_string( (t+1) /  t2) == "10" );
 			BOOST_TEST( to_string( (t+1) %  t2) == "1" );
 			BOOST_TEST( to_string(-(t+1) /  t2) == "-10" );
@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE( tinymp_arith )
 		t = t2 * 10;
 		std::string s("10");
 		for(std::size_t j = i + 1; j < digits; ++j) {
-			BOOST_TEST_CONTEXT( "i = " << to_string(i) << ", j = " << j) {
+			BOOST_TEST_CONTEXT( "i = " << i << ", j = " << j) {
 				std::string ms = std::string("-") + s;
 				BOOST_TEST( to_string( (t+1) /  t2) == s );
 				BOOST_TEST( to_string( (t+1) %  t2) == "1" );
@@ -124,7 +124,7 @@ BOOST_AUTO_TEST_CASE( tinymp_arith )
 		for(std::size_t j = 1; j < 100; ++j) {
 			t4 *= 16;
 			tinymp t5 = t3 - 1, t6 = t4 - 1;
-			BOOST_TEST_CONTEXT( "i = " << to_string(i) << " j = " << to_string(j) ) {
+			BOOST_TEST_CONTEXT( "i = " << i << " j = " << j ) {
 				BOOST_TEST( t5 * t6 == t5.mult(t6) );
 			}
 		}
