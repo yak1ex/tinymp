@@ -43,6 +43,17 @@ BOOST_AUTO_TEST_CASE( tinymp_arith )
 	// 0x10000000000000000 - 0xFFFFFFFFFFFFFFFF == 0x1
 	BOOST_TEST( 18446744073709551616_tmp - 18446744073709551615_tmp == 1_tmp );
 
+	tinymp unit = 4294967296_tmp, t = 1;
+	for(std::size_t i = 1; i <= 10; ++i) {
+		t *= unit;
+		tinymp tt(t);
+		tt -= 1;
+		BOOST_TEST_CONTEXT( "i = " << i ) {
+			BOOST_TEST( tt + 1 == t ); // carry
+			BOOST_TEST( t - 1 == tt ); // borrow
+		}
+	}
+
 	BOOST_TEST( to_string(tinymp(1)*100000*100000*100000*100000) == "100000000000000000000" );
 	BOOST_TEST( to_string(-12345678901234567890123467890_tmp) ==  "-12345678901234567890123467890" );
 	BOOST_TEST( to_string(-1234567890_tmp + 12345678901234567890_tmp) == "12345678900000000000" );
@@ -52,7 +63,7 @@ BOOST_AUTO_TEST_CASE( tinymp_arith )
 	BOOST_TEST( to_string(100000000000000000000_tmp  * -10000000000_tmp) == "-1000000000000000000000000000000" );
 	BOOST_TEST( to_string(-100000000000000000000_tmp * 10000000000_tmp)  == "-1000000000000000000000000000000" );
 	BOOST_TEST( to_string(-100000000000000000000_tmp * -10000000000_tmp) == "1000000000000000000000000000000" );
-	tinymp t(100);
+	t = 100;
 	unsigned int n = 10;
 	for(std::size_t i = 2; i <= std::numeric_limits<unsigned int>::digits10; ++i) {
 		BOOST_TEST_CONTEXT( "i = " << to_string(i) ) {
