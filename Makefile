@@ -13,7 +13,7 @@ runall: all
 log: all
 	./ut.exe --color_output=no --log_level=message --run_test=\* > `date +%Y%m%d%H%M%S`.txt 2>&1
 
-all: ut.exe
+all: ut.exe tinymp.cpp
 
 clean:
 	-rm *.o *.exe
@@ -21,4 +21,7 @@ clean:
 ut.exe: tinymp_test.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ -lboost_test_exec_monitor -lboost_timer
 
-tinymp_test.o: tinymp.cpp
+tinymp_test.o: tinymp.all.cpp
+
+tinymp.cpp: tinymp.all.cpp
+	unifdef -x 2 -UTINYMP_DEBUG -UTINYMP_KARATSUBA tinymp.all.cpp > tinymp.cpp

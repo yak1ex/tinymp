@@ -16,8 +16,9 @@ inline T mygcd(T m, T n)
 	return std::move(m);
 }
 
+#define TINYMP_KARATSUBA
 #pragma GCC diagnostic ignored "-Wmisleading-indentation"
-#include "tinymp.cpp"
+#include "tinymp.all.cpp"
 #pragma GCC diagnostic warning "-Wmisleading-indentation"
 
 using std::to_string;
