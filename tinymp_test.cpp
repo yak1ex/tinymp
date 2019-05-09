@@ -102,7 +102,7 @@ BOOST_AUTO_TEST_CASE( tinymp_arith )
 		t2 *= 10;
 	}
 
-#ifdef KARATSUBA
+#ifdef TINYMP_KARATSUBA
 	BOOST_TEST( 100_tmp .mult(100_tmp) == 10000_tmp );
 	BOOST_TEST( 1000000000000_tmp .mult(1000000000000_tmp) == 1000000000000000000000000_tmp );
 	BOOST_TEST( 10000000000000000000000_tmp .mult(10000000000000000000000_tmp) == 100000000000000000000000000000000000000000000_tmp );
@@ -189,7 +189,7 @@ BOOST_AUTO_TEST_CASE( tinymp_time, *boost::unit_test::disabled() )
 		}
 		BOOST_TEST_MESSAGE( i << ":" << oss.str() << "s" );
 	}
-#ifdef KARATSUBA
+#ifdef TINYMP_KARATSUBA
 	BOOST_TEST_MESSAGE( "[multiplication by Karatsuba for same size]" );
 	for(std::size_t i = 400; i <= 10000; i+= 400) {
 		std::ostringstream oss;
