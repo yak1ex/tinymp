@@ -54,12 +54,20 @@ public:
 	}
 	tinymp& operator*=(value_type s) {
 		widen_type carry = 0;
-		for(std::size_t i = 0; i < v.size(); ++i) {
-			widen_type temp = widen_type(v[i]) * s + carry;
-			v[i] = temp;
-			carry = temp >> limits_type::digits;
+		switch(s) {
+		case 0:
+			*this = 0;
+			break;
+		case 1:
+			break; // do nothing
+		default:
+			for(std::size_t i = 0; i < v.size(); ++i) {
+				widen_type temp = widen_type(v[i]) * s + carry;
+				v[i] = temp;
+				carry = temp >> limits_type::digits;
+			}
+			if(carry != 0) v.push_back(carry);
 		}
-		if(carry != 0) v.push_back(carry);
 		return *this;
 	}
 	tinymp& operator*=(const tinymp& other) {
