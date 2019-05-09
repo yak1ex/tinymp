@@ -1,0 +1,100 @@
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+#include <algorithm>
+#include <numeric>
+#include <limits>
+#include <bitset>
+#include <map>
+#include <set>
+#include <queue>
+#include <stack>
+#include <unordered_map>
+#include <unordered_set>
+#include <cmath>
+#include <cassert>
+#include <vector>
+#include <utility>
+#include <tuple>
+
+// INCLUDE_TINYMP
+
+typedef unsigned long long ULL;
+typedef long long LL;
+typedef unsigned long UL;
+typedef unsigned int UI;
+typedef unsigned short US;
+typedef unsigned char UC;
+
+// Integer range for range-based for loop
+template<typename T,T D=1>struct irange{struct it{it(T v_):v(v_){}T operator*()const{return v;}it&operator++(){v+=D;return*this;}friend bool operator!=(const it&it1, const it&it2){return it1.v!=it2.v;}private:T v;};it begin()const{return b;}it end()const{return e;}irange(T b_,T e_):b(b_),e(e_){}irange<T,-D>rev()const{return {e-1,b-1};}private:T b,e;};
+#define IR(b,e) irange<std::common_type_t<decltype(b),decltype(e)>>(b,e)
+// reverse range
+template<typename T>struct rrange{T&t;rrange(T&t_):t(t_){}auto begin()const{return rbegin(t);}auto end()const{return rend(t);}};template<typename T>auto rev(T&t){return rrange<T>(t);}template<typename T,T D>auto rev(const irange<T,D>&t){return t.rev();}
+
+// mvec for flat style
+template<typename T,typename U>auto make_mvec(const T&t,const U&u)->std::vector<T>{return std::vector<T>(u,t);}template<typename T,typename U0,typename...U>auto make_mvec(const T&t,const U0&u0,const U&...u)->std::vector<decltype(make_mvec<T>(t,u...))>{return std::vector<decltype(make_mvec<T>(t,u...))>(u0,make_mvec<T>(t,u...));}
+
+#define REC(f, r, a) std::function< r a > f = [&] a -> r
+#define RNG(v) std::begin(v), std::end(v)
+
+using namespace std;
+
+template<typename T>
+inline T mygcd(T m, T n)
+{
+	if(m < n) std::swap(m, n);
+	while(n != 0) {
+		T r = m % n;
+		m = std::move(n);
+		n = std::move(r);
+	}
+	return std::move(m);
+}
+
+int main(void)
+{
+	ios_base::sync_with_stdio(false);
+
+	UI cases; cin >> cases;
+	for(UI casenum : IR(0, cases)) {
+		tinymp N; UI L; cin >> N >> L;
+		vector<tinymp> v(L); for(auto &val : v) cin >> val;
+		set<tinymp> s;
+		for(auto i : IR(0, L-1)) {
+			auto t = mygcd(v[i], v[i+1]);
+			if(t != v[i]) {
+				s.insert(t);
+				s.insert(v[i] / t);
+				s.insert(v[i+1] / t);
+			}
+		}
+		map<tinymp, char> table;
+		char c = 'A';
+		for(auto it = s.begin(); it != s.end(); ++it, ++c) {
+			table[*it] = c;
+		}
+		for(auto &val: s) {
+			if(v[0] % val == 0) {
+				auto decode = [&](tinymp val)->string{
+					string s;
+					auto div = v[0] / val;
+					s.push_back(table[div]);
+					for(auto i: IR(0, L)) {
+						auto t = v[i].div(div);
+						if(t.second != 0) return "";
+						div = t.first;
+						s.push_back(table[div]);
+					}
+					return s;
+				};
+				auto res = decode(val);
+				if(res == "") res = decode(v[0] / val);
+				cout << "Case #" << casenum+1 << ": " << res << endl;
+				break;
+			}
+		}
+	}
+
+	return 0;
+}
