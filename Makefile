@@ -13,16 +13,12 @@ runall: all
 log: all
 	./ut.exe --color_output=no --log_level=message --run_test=\* > `date +%Y%m%d%H%M%S`.txt 2>&1
 
-all: ut.exe tinymp.minify.cpp
+all: ut.exe
 
 clean:
-	-rm *.o *.exe tinymp.minify.cpp
+	-rm *.o *.exe
 
 ut.exe: tinymp_test.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ -lboost_test_exec_monitor -lboost_timer
 
-tinymp_test.o: tinymp.minify.cpp
-
-# https://github.com/Scylardor/cminify
-tinymp.minify.cpp: tinymp.cpp
-	python ./cminify/minifier.py tinymp.cpp | sed -e 's, : ,:,g;s, ? ,?,g;s, \.\.\. ,...,g' > $@
+tinymp_test.o: tinymp.cpp
