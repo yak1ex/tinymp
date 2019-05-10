@@ -33,6 +33,16 @@ public:
 	tinymp(InIt it1, InIt it2): v(it1, it2), nonneg(true) {
 		if(v.size() == 0) v.push_back(0);
 	}
+	// not be smart but works in std
+	std::size_t hash() const noexcept {
+		std::vector<bool> t(v.size() * limits_type::digits);
+		auto it = t.begin();
+		for(auto val : v)
+			for(std::size_t i = 0; i < limits_type::digits; ++i)
+				*it++ = (val & (value_type(1) << i)) != 0;
+		return std::hash<decltype(t)>{}(t);
+	}
+
 	// compound assignments
 	tinymp& operator+=(const tinymp& other) {
 		if(nonneg ^ other.nonneg) nonneg ^= sub(v, other.v);
@@ -506,4 +516,7 @@ inline tinymp operator"" _tmp()
 inline tinymp stotmp(const std::string& s)
 {
 	return tinymp::stotmp(s); // RVO
+}
+namespace std {
+	template<> struct hash<tinymp> { std::size_t operator()(const tinymp& v) const noexcept { return v.hash(); } };
 }
