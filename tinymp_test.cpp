@@ -3,6 +3,7 @@
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/data/monomorphic.hpp>
 #include <boost/timer/timer.hpp>
+#include <unordered_map>
 
 template<typename T>
 inline T mygcd(T m, T n)
@@ -182,6 +183,59 @@ BOOST_AUTO_TEST_CASE( tinymp_io )
 	BOOST_TEST( oss.str() == to_string(t2) );
 	BOOST_TEST( stotmp("123456789012345678901234567890") == 123456789012345678901234567890_tmp );
 	BOOST_TEST( to_string(123456789012345678901234567890_tmp) == "123456789012345678901234567890" );
+}
+
+// std::is_swappable and std::is_nothrow_swappable are available only from C++17
+namespace {
+    using std::swap;
+
+    struct swappable
+    {
+        template<typename T, typename = decltype(swap(std::declval<T&>(), std::declval<T&>()))>
+        static std::true_type test(int);
+
+        template<typename>
+        static std::false_type test(...);
+    };
+    template<typename T> struct is_swappable_impl { typedef decltype(swappable::test<T>(0)) type; };
+    template<typename T> struct is_swappable : public is_swappable_impl<T>::type {};
+
+    struct nothrow_swappable
+    {
+        template<typename T>
+        static std::integral_constant<bool, noexcept(swap(std::declval<T&>(), std::declval<T&>()))> test(int);
+
+        template<typename>
+        static std::false_type test(...);
+    };
+    template<typename T> struct is_nothrow_swappable_impl { typedef decltype(nothrow_swappable::test<T>(0)) type; };
+    template<typename T> struct is_nothrow_swappable : public is_nothrow_swappable_impl<T>::type {};
+}
+
+BOOST_AUTO_TEST_CASE( tinymp_stdif )
+{
+	BOOST_TEST( std::is_default_constructible<tinymp>::value == true );
+	BOOST_TEST( std::is_trivially_default_constructible<tinymp>::value == false );
+	BOOST_TEST( std::is_nothrow_default_constructible<tinymp>::value == false );
+	BOOST_TEST( std::is_copy_constructible<tinymp>::value == true );
+	BOOST_TEST( std::is_trivially_copy_constructible<tinymp>::value == false );
+	BOOST_TEST( std::is_nothrow_copy_constructible<tinymp>::value == false );
+	BOOST_TEST( std::is_move_constructible<tinymp>::value == true );
+	BOOST_TEST( std::is_trivially_move_constructible<tinymp>::value == false );
+	BOOST_TEST( std::is_nothrow_move_constructible<tinymp>::value == true );
+	BOOST_TEST(      is_swappable<tinymp>::value == true );
+	BOOST_TEST(      is_nothrow_swappable<tinymp>::value == true );
+
+	auto hasher = std::hash<tinymp>{};
+	BOOST_TEST( hasher(10000000000_tmp) == hasher(10000000000_tmp) );
+	BOOST_TEST( hasher(tinymp()) == hasher(tinymp()) );
+	BOOST_TEST( hasher(tinymp(10000000000_tmp)) != hasher(tinymp()) );
+
+	std::unordered_map<tinymp, tinymp> hmap;
+	hmap[100000_tmp] = 10000000000_tmp;
+	BOOST_TEST( hmap.count(100000_tmp) == 1 );
+	BOOST_TEST( hmap[100000_tmp] == 10000000000_tmp );
+	BOOST_TEST( hmap.count(1000000_tmp) == 0 );
 }
 
 BOOST_AUTO_TEST_CASE( tinymp_time, *boost::unit_test::disabled() )
