@@ -10,8 +10,9 @@
 // distributed under the CC0-1.0
 class tinymp
 {
-private:
+public:
 	typedef unsigned int value_type;
+private:
 	typedef std::numeric_limits<value_type> limits_type;
 	typedef unsigned long long widen_type;
 	typedef std::numeric_limits<widen_type> wlimits_type;
