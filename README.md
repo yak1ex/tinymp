@@ -21,6 +21,8 @@ Major interger operations are implemented so that you can basically use this cla
 - Conversion from/to string (stotmp, to_string)
 - User-defined literal (_tmp)
 - iostream operators(<<, >>)
+- std::hash specialization
+- (std::swap uses default implementation)
 
 Not-yet implemented operations are as follows:
 
@@ -29,6 +31,16 @@ Not-yet implemented operations are as follows:
 - Bit-wise opreators(~, &, |, ^)
 - Logical operators(!, &&, ||)
 - Corresponding compound assignment operators(<<=, >>=, &=, |=, ^=)
+- std::numeric_limits specialization
+
+Implicit conversion from unsigned int is permitted, so that some cases look strange.
+
+```
+BOOST_TEST( -10_tmp == -10 ); // fails because -10 converts to a positive value
+BOOST_TEST( 4294967306_tmp == 4294967306 ); // fails because 4294967306 truncates to 10
+```
+
+Use user-defined literal unless the value is strictly in the range of unsigned int.
 
 License
 -------
@@ -51,6 +63,6 @@ Limitation
 As described above, primary motivation is for competitive programming, so that it is not appropriate for any production usage.
 
 - Almost all C++ libraries should have their own namespace and declare almost everything in the namespace but this code does not follow the rule.
-- No consideration for exception safety.
+- There is no specific consideration for exception safety.
 - It trusts a given input.
 - Performance is not a primary interest.
