@@ -96,7 +96,7 @@ public:
 	tinymp operator+() const {
 		return tinymp(*this);
 	}
-	tinymp& flip_() {
+	tinymp& flip_() noexcept {
 		if(v.size() != 1 || v[0] != 0) nonneg = !nonneg;
 		return *this;
 	}
@@ -220,36 +220,36 @@ public:
 	// TODO: shift
 	// TODO: bit-wise arithmetic
 	// comparison
-	bool absless(const tinymp &other) const {
+	bool absless(const tinymp &other) const noexcept {
 		return absless(v, other.v);
 	}
-	bool absgreater(const tinymp &other) const {
+	bool absgreater(const tinymp &other) const noexcept {
 		return absgreater(v, other.v);
 	}
-	bool absequal(const tinymp &other) const {
+	bool absequal(const tinymp &other) const noexcept {
 		if(v.size() != other.v.size()) return false;
 		return std::equal(v.begin(), v.end(), other.v.begin());
 	}
-	friend inline bool operator==(const tinymp &v1, const tinymp &v2) {
+	friend inline bool operator==(const tinymp &v1, const tinymp &v2) noexcept {
 		if(v1.nonneg != v2.nonneg) return false;
 		return v1.absequal(v2);
 	}
-	friend inline bool operator!=(const tinymp &v1, const tinymp &v2) {
+	friend inline bool operator!=(const tinymp &v1, const tinymp &v2) noexcept {
 		return !(v1 == v2);
 	}
-	friend inline bool operator<(const tinymp &v1, const tinymp &v2) {
+	friend inline bool operator<(const tinymp &v1, const tinymp &v2) noexcept {
 		if(!v1.nonneg && v2.nonneg) return true;
 		if(v1.nonneg && !v2.nonneg) return false;
 		if(v1.nonneg) return v1.absless(v2);
 		return v1.absgreater(v2);
 	}
-	friend inline bool operator>(const tinymp &v1, const tinymp &v2) {
+	friend inline bool operator>(const tinymp &v1, const tinymp &v2) noexcept {
 		return v2 < v1;
 	}
-	friend inline bool operator<=(const tinymp &v1, const tinymp &v2) {
+	friend inline bool operator<=(const tinymp &v1, const tinymp &v2) noexcept {
 		return !(v2 < v1);
 	}
-	friend inline bool operator>=(const tinymp &v1, const tinymp &v2) {
+	friend inline bool operator>=(const tinymp &v1, const tinymp &v2) noexcept {
 		return !(v2 > v1);
 	}
 	// literal
@@ -287,7 +287,7 @@ public:
 private:
 	vector_type v;
 	bool nonneg;
-	void normalize() {
+	void normalize() noexcept {
 		while(v.size() > 1 && v.back() == 0) v.pop_back();
 		if(is_zero()) nonneg = true;
 	}
@@ -306,33 +306,33 @@ private:
 			typedef std::ptrdiff_t difference_type;
 			typedef const value_type* pointer;
 			typedef const value_type& reference;
-			riterator(const offseter *p_, std::size_t pos_) : p(p_), pos(pos_) {}
-			reference operator*() { return pos >= p->off + 1 ? p->st[pos - p->off - 1] : zero(); }
-			riterator& operator++() { --pos; return *this; }
-			riterator operator++(int) { riterator r(*this); --pos; return r; /* NRVO */ }
-			bool operator==(const riterator& other) const { return p == other.p && pos == other.pos; }
-			bool operator!=(const riterator& other) const { return !(*this == other); }
+			riterator(const offseter *p_, std::size_t pos_) noexcept : p(p_), pos(pos_) {}
+			reference operator*() noexcept { return pos >= p->off + 1 ? p->st[pos - p->off - 1] : zero(); }
+			riterator& operator++() noexcept { --pos; return *this; }
+			riterator operator++(int) noexcept { riterator r(*this); --pos; return r; /* NRVO */ }
+			bool operator==(const riterator& other) const noexcept { return p == other.p && pos == other.pos; }
+			bool operator!=(const riterator& other) const noexcept { return !(*this == other); }
 		};
 	public:
 		typedef typename T::value_type value_type;
-		offseter(T& pv_, std::size_t offset_ = 0) : st(pv_.begin()), sz(pv_.size()), cap(pv_.capacity()), off(offset_) {}
+		offseter(T& pv_, std::size_t offset_ = 0) noexcept : st(pv_.begin()), sz(pv_.size()), cap(pv_.capacity()), off(offset_) {}
 		template<typename U> // should limit U
-		offseter(const offseter<U>& o) : st(o.start()), sz(o.size() - o.offset()), cap(o.capacity()), off(o.offset()) {}
+		offseter(const offseter<U>& o) noexcept : st(o.start()), sz(o.size() - o.offset()), cap(o.capacity()), off(o.offset()) {}
 #ifdef TINYMP_KARATSUBA
-		offseter(iterator_type st_, iterator_type end_, std::size_t sz_, std::size_t offset_) : st(st_), sz(sz_), cap(end_ - st_), off(offset_) {}
+		offseter(iterator_type st_, iterator_type end_, std::size_t sz_, std::size_t offset_) noexcept : st(st_), sz(sz_), cap(end_ - st_), off(offset_) {}
 #endif
-		const value_type& operator[](std::size_t idx) const { return idx >= off ? st[idx - off] : zero(); }
-		value_type& operator[](std::size_t idx) { return idx >= off ? st[idx - off] : zero(); }
-		riterator rbegin() const { return riterator(this, sz + off); }
-		riterator rend() const { return riterator(this, 0); }
-		std::size_t size() const { return sz + off; }
-		std::size_t offset() const { return off; }
-		std::size_t capacity() const { return cap; }
-		iterator_type start() const { return st; }
+		const value_type& operator[](std::size_t idx) const noexcept { return idx >= off ? st[idx - off] : zero(); }
+		value_type& operator[](std::size_t idx) noexcept { return idx >= off ? st[idx - off] : zero(); }
+		riterator rbegin() const noexcept { return riterator(this, sz + off); }
+		riterator rend() const noexcept { return riterator(this, 0); }
+		std::size_t size() const noexcept { return sz + off; }
+		std::size_t offset() const noexcept { return off; }
+		std::size_t capacity() const noexcept { return cap; }
+		iterator_type start() const noexcept { return st; }
 		void resize(std::size_t sz_) { if(sz_ <= cap + off && sz_ > off) { for(std::size_t idx = sz; idx < sz_ - off; ++idx) st[idx] = 0; sz = sz_ - off; } else throw std::bad_alloc(); }
 		void push_back(const value_type& t) { if(sz < cap) { st[sz] = t; ++sz; } else throw std::bad_alloc(); }
 #ifdef TINYMP_KARATSUBA
-		offseter offset_view(std::size_t o) const { return { st, st + sz, sz, off + o }; }
+		offseter offset_view(std::size_t o) const noexcept { return { st, st + sz, sz, off + o }; }
 		offseter sub_view(std::size_t s, std::size_t e) const { if(off != 0) throw std::logic_error("offset should be 0"); return { st + s, st + e, e - s, off }; }
 #endif
 #ifdef TINYMP_DEBUG
@@ -347,7 +347,7 @@ private:
 		std::size_t sz; // valid digits
 		std::size_t cap;
 		std::size_t off;
-		static value_type& zero() {
+		static value_type& zero() noexcept {
 			static value_type zero_;
 			return zero_;
 		}
@@ -355,26 +355,26 @@ private:
 	typedef offseter<vector_type> offseter_type;
 	typedef offseter<cvector_type> coffseter_type;
 	template<typename T>
-	static bool overflow(T carry, T v1, T v2) {
+	static bool overflow(T carry, T v1, T v2) noexcept {
 		return carry ? v1 <= v2 : v1 < v2;
 	}
 	// absolute value arith
 	template<typename T, typename U> // T, U are vector<V> or offseter<V>
-	static bool absless(const T &v1, const U &v2) {
+	static bool absless(const T &v1, const U &v2) noexcept {
 		if(v1.size() < v2.size()) return true;
 		if(v1.size() > v2.size()) return false;
 		return std::lexicographical_compare(v1.rbegin(), v1.rend(), v2.rbegin(), v2.rend());
 	}
 	template<typename T, typename U> // T, U are vector<V> or offseter<V>
-	static bool absgreater(const T &v1, const U &v2) {
+	static bool absgreater(const T &v1, const U &v2) noexcept {
 		if(v1.size() < v2.size()) return false;
 		if(v1.size() > v2.size()) return true;
 		return std::lexicographical_compare(v2.rbegin(), v2.rend(), v1.rbegin(), v1.rend());
 	}
 	template<typename T>
-	static std::size_t offset(const std::vector<T>&) { return 0; }
+	static std::size_t offset(const std::vector<T>&) noexcept { return 0; }
 	template<typename T> // T = vector<...>
-	static std::size_t offset(const offseter<T>& t) { return t.offset(); }
+	static std::size_t offset(const offseter<T>& t) noexcept { return t.offset(); }
 	template<typename T, typename U> // T, U are vector<V> or offseter<V>
 	static void add(T &v1, const U &v2) {
 		if(v1.size() < v2.size()) v1.resize(v2.size());
@@ -389,7 +389,7 @@ private:
 		if(carry) v1.push_back(1);
 	}
 	template<typename T> // T is vector<V> or offseter<V>
-	static void normalize(T &v) {
+	static void normalize(T &v) noexcept { // always shrink or nothing to do
 		auto idx = v.size() - 1; // size() should be more than 0
 		for(;v[idx] == 0 && idx > 0; --idx);
 		v.resize(idx + 1);
@@ -486,7 +486,7 @@ private:
 	}
 #endif
 
-	bool is_zero() const {
+	bool is_zero() const noexcept {
 		return v.size() == 1 && v[0] == 0;
 	}
 	tinymp& from_chars(const char* p, std::size_t size) {
