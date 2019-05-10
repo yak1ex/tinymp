@@ -1,3 +1,7 @@
+out/
+coverage.info
+*.gcda
+*.gcno
 *.exe
 *.txt
 *.BAK
