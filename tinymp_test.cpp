@@ -25,7 +25,27 @@ inline T mygcd(T m, T n)
 using std::to_string;
 namespace bdata = boost::unit_test::data;
 
-tinymp vals[] = { -10000000000000000000000_tmp, -1_tmp, 0, 1, 10000000000000000000000_tmp };
+tinymp vals[] = { -10000000000000000000000_tmp, -4294967296_tmp, -1_tmp, 0, 1, 4294967295_tmp, 10000000000000000000000_tmp };
+
+BOOST_AUTO_TEST_CASE( tinymp_construct )
+{
+	BOOST_TEST( tinymp() == 0 );
+	BOOST_TEST( tinymp(10) == 10 );
+	BOOST_TEST( tinymp(10, false) == -10_tmp );
+	BOOST_TEST( tinymp("1234567890", 10) == 1234567890_tmp );
+	std::vector<tinymp::value_type> v;
+	BOOST_TEST( tinymp(v.begin(), v.end()) == 0 );
+	v.push_back(10);
+	BOOST_TEST( tinymp(v.begin(), v.end()) == 10 );
+	v.push_back(1);
+	BOOST_TEST( tinymp(v.begin(), v.end()) == 4294967306_tmp );
+}
+
+BOOST_AUTO_TEST_CASE( tinymp_pitfall )
+{
+	BOOST_TEST( -10_tmp != -10 ); // because -10 converts to a positive value
+	BOOST_TEST( 4294967306_tmp != 4294967306 ); // because 4294967306 truncates to 10
+}
 
 BOOST_AUTO_TEST_CASE( tinymp_arith )
 {
@@ -39,6 +59,7 @@ BOOST_AUTO_TEST_CASE( tinymp_arith )
 	BOOST_TEST( to_string(tinymp(0xFFFFFFFFUL)+(-tinymp(0xFFFFFFFFUL))) == "0" );
 	BOOST_TEST( to_string(-tinymp(0xFFFFFFFFUL)+tinymp(0xFFFFFFFFUL)) == "0" );
 	BOOST_TEST( to_string(tinymp(0xFFFFFFFFUL)-tinymp(0xFFFFFFFFUL)) == "0" );
+	BOOST_TEST( to_string(tinymp(0xFFFFFFFFUL)-tinymp(0)) == "4294967295" );
 	// 0xFFFFFFFFFFFFFFFF + 0x10000000000000001 == 0x0x20000000000000000
 	BOOST_TEST( 18446744073709551615_tmp + 18446744073709551617_tmp == 36893488147419103232_tmp );
 	// 0x10000000000000000 - 0xFFFFFFFFFFFFFFFF == 0x1
@@ -64,6 +85,8 @@ BOOST_AUTO_TEST_CASE( tinymp_arith )
 	BOOST_TEST( to_string(100000000000000000000_tmp  * -10000000000_tmp) == "-1000000000000000000000000000000" );
 	BOOST_TEST( to_string(-100000000000000000000_tmp * 10000000000_tmp)  == "-1000000000000000000000000000000" );
 	BOOST_TEST( to_string(-100000000000000000000_tmp * -10000000000_tmp) == "1000000000000000000000000000000" );
+	BOOST_TEST( 100000000000_tmp / 1000000000000_tmp == 0 );
+	BOOST_TEST( 100000000000_tmp % 1000000000000_tmp == 100000000000_tmp );
 	t = 100;
 	unsigned int n = 10;
 	for(std::size_t i = 2; i <= std::numeric_limits<unsigned int>::digits10; ++i) {
@@ -154,15 +177,21 @@ BOOST_DATA_TEST_CASE( tinymp_comparison, bdata::make(vals), val0 )
 	tinymp val1 = val0 + 1;
 	BOOST_TEST(   val0 == val0 );
 	BOOST_TEST( !(val0 == val1 ) );
+	BOOST_TEST( !(val1 == val0 ) );
 	BOOST_TEST(   val0 != val1 );
+	BOOST_TEST(   val1 != val0 );
 	BOOST_TEST( !(val0 != val0 ) );
 	BOOST_TEST(   val0 <  val1 );
 	BOOST_TEST( !(val0 <  val0 ) );
+	BOOST_TEST( !(val1 <  val0 ) );
 	BOOST_TEST(   val0 <= val0 );
+	BOOST_TEST(   val0 <= val1 );
 	BOOST_TEST( !(val1 <= val0 ) );
 	BOOST_TEST(   val1 >  val0 );
 	BOOST_TEST( !(val0 >  val0 ) );
+	BOOST_TEST( !(val0 >  val1 ) );
 	BOOST_TEST(   val1 >= val0 );
+	BOOST_TEST(   val0 >= val0 );
 	BOOST_TEST( !(val0 >= val1 ) );
 }
 
