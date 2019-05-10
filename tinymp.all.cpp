@@ -35,20 +35,14 @@ public:
 	}
 	// compound assignments
 	tinymp& operator+=(const tinymp& other) {
-		if(nonneg ^ other.nonneg) {
-			nonneg ^= sub(v, other.v);
-		} else {
-			add(v, other.v);
-		}
+		if(nonneg ^ other.nonneg) nonneg ^= sub(v, other.v);
+		else add(v, other.v);
 		return *this;
 	}
 	tinymp& operator-=(const tinymp& other) {
 		if(!other.is_zero()) {
-			if(nonneg ^ other.nonneg) {
-				add(v, other.v);
-			} else {
-				nonneg ^= sub(v, other.v);
-			}
+			if(nonneg ^ other.nonneg) add(v, other.v);
+			else nonneg ^= sub(v, other.v);
 		}
 		return *this;
 	}
@@ -56,8 +50,7 @@ public:
 		widen_type carry = 0;
 		switch(s) {
 		case 0:
-			*this = 0;
-			break;
+			*this = 0; break;
 		case 1:
 			break; // do nothing
 		default:
@@ -156,10 +149,10 @@ public:
 				auto temp = other * candidate;
 				while(candidate == 0 || !absless(residual.v, offseter_type(temp.v, idxr))) {
 					++candidate;
-					temp += other;
+					temp += other; // temp = other * candidate seems to be faster if other has 1000 digits (base-10) order
 				}
 				--candidate;
-				temp -= other;
+				temp -= other; // temp = other * candidate seems to be faster if other has 1000 digits (base-10) order
 				sub(residual.v, offseter_type(temp.v, idxr)); // residual -= (temp << (idxr * BITS));
 				r.v[idxr] = candidate;
 			}
