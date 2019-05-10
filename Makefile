@@ -3,6 +3,10 @@
 # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=84889
 # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=89549
 CXXFLAGS=-O3 -Wall -Wextra -std=c++11 -Wno-misleading-indentation
+LCOV=lcov
+LCOVFLAGS=--capture --directory . --rc lcov_branch_coverage=1 --no-external -o coverage.info
+GEHMTML=genhtml
+GENHTMLFLAGS=--branch-coverage -o out coverage.info --demangle-cpp
 GCJEX=gcj2019qr_c.cpp
 
 run: all
@@ -18,6 +22,11 @@ all: ut.exe tinymp.cpp $(GCJEX)
 
 clean:
 	-rm *.o *.exe
+
+coverage : CXXFLAGS=-O3 -Wall -Wextra -std=c++11 -Wno-misleading-indentation --coverage -fno-inline
+coverage: run
+	$(LCOV) $(LCOVFLAGS)
+	$(GENHTML) $(GENHTMLFLAGS)
 
 ut.exe: tinymp_test.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ -lboost_test_exec_monitor -lboost_timer
