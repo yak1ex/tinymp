@@ -211,13 +211,13 @@ public:
 #endif
 	// arithmetic binary operators
 	friend inline tinymp operator+(const tinymp &v1, const tinymp &v2) {
-		tinymp r(v1); r += v2; return r;
+		tinymp r(v1); r += v2; return r; // NRVO
 	}
-	friend inline tinymp operator-(tinymp v1, const tinymp &v2) {
-		return std::move(v1 -= v2);
+	friend inline tinymp operator-(const tinymp &v1, const tinymp &v2) {
+		tinymp r(v1); r -= v2; return r; // NRVO
 	}
-	friend inline tinymp operator*(tinymp other, value_type s) {
-		return std::move(other *= s);
+	friend inline tinymp operator*(const tinymp &v, value_type s) {
+		tinymp r(v); r *= s; return r; // NRVO
 	}
 	friend tinymp operator*(const tinymp &v1, const tinymp& v2) {
 		tinymp r;
