@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <vector>
 #include <numeric>
 #include <algorithm>
@@ -11,10 +12,10 @@
 class tinymp
 {
 public:
-	typedef unsigned int value_type;
+	typedef std::uint32_t value_type;
 private:
 	typedef std::numeric_limits<value_type> limits_type;
-	typedef unsigned long long widen_type;
+	typedef std::uint64_t widen_type;
 	typedef std::numeric_limits<widen_type> wlimits_type;
 	typedef std::vector<value_type> vector_type;
 	typedef const std::vector<value_type> cvector_type;
@@ -82,6 +83,36 @@ public:
 	}
 	tinymp& operator%=(const tinymp& other) {
 		*this = div_(other).second;
+		return *this;
+	}
+	// NOTE: shift by digits leads undefined behavior
+	tinymp& operator<<=(value_type s) {
+		auto count = s / limits_type::digits;
+		auto bits = s % limits_type::digits;
+		value_type overflow = bits == 0 ? 0 : v[v.size() - 1] >> (limits_type::digits - bits);
+		v.resize(v.size() + count);
+		auto start = v.size();
+		if(overflow) v.push_back(overflow);
+		for(auto idx = start; idx > count + 1; --idx) {
+			v[idx - 1] = (v[idx - count - 1] << bits) | (bits ? (v[idx - count - 2] >> (limits_type::digits - bits)) : 0);
+		}
+		v[count] = v[0] << bits;
+		for(std::size_t idx = 0; idx < count; ++idx) v[idx] = 0;
+		return *this;
+	}
+	tinymp& operator>>=(value_type s) {
+		auto count = s / limits_type::digits;
+		auto bits = s % limits_type::digits;
+		if(count < v.size()) {
+			for(auto idx = 0; idx + count < v.size() - 1; ++idx) {
+				v[idx] = (v[idx + count] >> bits) | (bits ? (v[idx + count + 1] << (limits_type::digits - bits)) : 0);
+			}
+			v[v.size() - count - 1] = v[v.size() - 1] >> bits;
+			v.resize(v.size() - count);
+			normalize();
+		} else {
+			*this = 0;
+		}
 		return *this;
 	}
 	// arithmetic unary operators
@@ -167,13 +198,13 @@ public:
 	}
 	// arithmetic binary operators
 	friend inline tinymp operator+(const tinymp &v1, const tinymp &v2) {
-		tinymp r(v1); r += v2; return r;
+		tinymp r(v1); r += v2; return r; // NRVO
 	}
-	friend inline tinymp operator-(tinymp v1, const tinymp &v2) {
-		return std::move(v1 -= v2);
+	friend inline tinymp operator-(const tinymp &v1, const tinymp &v2) {
+		tinymp r(v1); r -= v2; return r; // NRVO
 	}
-	friend inline tinymp operator*(tinymp other, value_type s) {
-		return std::move(other *= s);
+	friend inline tinymp operator*(const tinymp &v, value_type s) {
+		tinymp r(v); r *= s; return r; // NRVO
 	}
 	friend tinymp operator*(const tinymp &v1, const tinymp& v2) {
 		tinymp r;
@@ -191,20 +222,26 @@ public:
 		r.nonneg = !(v1.nonneg ^ v2.nonneg);
 		return r; // NRVO
 	}
-	friend inline tinymp operator/(const tinymp &other, value_type s) {
-		tinymp r(other); r /= s; return r; // NRVO
+	friend inline tinymp operator/(const tinymp &v, value_type s) {
+		tinymp r(v); r /= s; return r; // NRVO
 	}
 	friend inline tinymp operator/(const tinymp &v1, const tinymp &v2) {
 		tinymp r(v1); r /= v2; return r; // NRVO
 	}
-	friend inline tinymp operator%(const tinymp &other, value_type s) {
-		return tinymp(other).div_(s).second;
+	friend inline tinymp operator%(const tinymp &v, value_type s) {
+		return tinymp(v).div_(s).second;
 	}
 	friend inline tinymp operator%(const tinymp &v1, const tinymp &v2) {
 		return tinymp(v1).div_(v2).second;
 	}
-	// TODO: increment/decrement
-	// TODO: shift
+	// increment/decrement operators
+	tinymp& operator++() { *this += 1; return *this; }
+	tinymp operator++(int) { tinymp t(*this); *this += 1; return t; } // NRVO
+	tinymp& operator--() { *this -= 1; return *this; }
+	tinymp operator--(int) { tinymp t(*this); *this -= 1; return t; } // NRVO
+	// shift operators
+	tinymp operator<<(std::size_t s) const { tinymp r(*this); r <<= s; return r; } // NRVO
+	tinymp operator>>(std::size_t s) const { tinymp r(*this); r >>= s; return r; } // NRVO
 	// TODO: bit-wise arithmetic
 	// comparison
 	bool absless(const tinymp &other) const noexcept {
@@ -289,7 +326,7 @@ private:
 			std::size_t pos; // [0, p->sz + p->offset]: (p->sz + p->off) points to p->st[p->sz - 1]
 		public:
 			typedef std::input_iterator_tag iterator_category;
-			typedef value_type value_type;
+			typedef typename T::value_type value_type;
 			typedef std::ptrdiff_t difference_type;
 			typedef const value_type* pointer;
 			typedef const value_type& reference;

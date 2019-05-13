@@ -15,9 +15,11 @@ Major interger operations are implemented so that you can basically use this cla
 - Additional destructive sign change(flip_)
 - Binary arithmetic operators(+, - , *, /, %)
 - Additional division operations for getting both of quotinent and remainder (div(nondestructive), div_(destructive))
-- Simple and corresponding compound assignment operators(=, +=, -=, *=, /=, %=)
+- Shift operators(<<, >>)
+- Corresponding compound assignment operators(=, +=, -=, *=, /=, %=, <<=, >>=)
+- Increment/Decrement operators(++, --)
 - Comparision operatos(<, >, <=, >=, ==, !=)
-- Conversion from unsigned int *IMPLICIT CONVERSION PERMITTED*
+- Conversion from std::uint32_t *IMPLICIT CONVERSION PERMITTED*
 - Conversion from/to string (stotmp, to_string)
 - User-defined literal (_tmp)
 - iostream operators(<<, >>)
@@ -26,11 +28,9 @@ Major interger operations are implemented so that you can basically use this cla
 
 Not-yet implemented operations are as follows:
 
-- Increment/Decrement operators(++, --)
-- Shift operators(<<, >>)
 - Bit-wise opreators(~, &, |, ^)
+- Corresponding compound assignment operators(&=, |=, ^=)
 - Logical operators(!, &&, ||)
-- Corresponding compound assignment operators(<<=, >>=, &=, |=, ^=)
 - std::numeric_limits specialization
 
 Implicit conversion from unsigned int is permitted, so that some cases look strange.
@@ -40,7 +40,7 @@ BOOST_TEST( -10_tmp == -10 ); // fails because -10 converts to a positive value
 BOOST_TEST( 4294967306_tmp == 4294967306 ); // fails because 4294967306 truncates to 10
 ```
 
-Use user-defined literal unless the value is strictly in the range of unsigned int.
+Use user-defined literal unless the value is strictly in the range of std::uint32_t.
 
 License
 -------
