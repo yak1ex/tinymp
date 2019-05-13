@@ -93,6 +93,36 @@ public:
 		*this = div_(other).second;
 		return *this;
 	}
+	// NOTE: shift by digits leads undefined behavior
+	tinymp& operator<<=(value_type s) {
+		auto count = s / limits_type::digits;
+		auto bits = s % limits_type::digits;
+		value_type overflow = bits == 0 ? 0 : v[v.size() - 1] >> (limits_type::digits - bits);
+		v.resize(v.size() + count);
+		auto start = v.size();
+		if(overflow) v.push_back(overflow);
+		for(auto idx = start; idx > count + 1; --idx) {
+			v[idx - 1] = (v[idx - count - 1] << bits) | (bits ? (v[idx - count - 2] >> (limits_type::digits - bits)) : 0);
+		}
+		v[count] = v[0] << bits;
+		for(std::size_t idx = 0; idx < count; ++idx) v[idx] = 0;
+		return *this;
+	}
+	tinymp& operator>>=(value_type s) {
+		auto count = s / limits_type::digits;
+		auto bits = s % limits_type::digits;
+		if(count < v.size()) {
+			for(auto idx = 0; idx + count < v.size() - 1; ++idx) {
+				v[idx] = (v[idx + count] >> bits) | (bits ? (v[idx + count + 1] << (limits_type::digits - bits)) : 0);
+			}
+			v[v.size() - count - 1] = v[v.size() - 1] >> bits;
+			v.resize(v.size() - count);
+			normalize();
+		} else {
+			*this = 0;
+		}
+		return *this;
+	}
 	// arithmetic unary operators
 	tinymp operator+() const {
 		return tinymp(*this);
@@ -205,20 +235,26 @@ public:
 		r.nonneg = !(v1.nonneg ^ v2.nonneg);
 		return r; // NRVO
 	}
-	friend inline tinymp operator/(const tinymp &other, value_type s) {
-		tinymp r(other); r /= s; return r; // NRVO
+	friend inline tinymp operator/(const tinymp &v, value_type s) {
+		tinymp r(v); r /= s; return r; // NRVO
 	}
 	friend inline tinymp operator/(const tinymp &v1, const tinymp &v2) {
 		tinymp r(v1); r /= v2; return r; // NRVO
 	}
-	friend inline tinymp operator%(const tinymp &other, value_type s) {
-		return tinymp(other).div_(s).second;
+	friend inline tinymp operator%(const tinymp &v, value_type s) {
+		return tinymp(v).div_(s).second;
 	}
 	friend inline tinymp operator%(const tinymp &v1, const tinymp &v2) {
 		return tinymp(v1).div_(v2).second;
 	}
-	// TODO: increment/decrement
-	// TODO: shift
+	// increment/decrement operators
+	tinymp& operator++() { *this += 1; return *this; }
+	tinymp operator++(int) { tinymp t(*this); *this += 1; return t; } // NRVO
+	tinymp& operator--() { *this -= 1; return *this; }
+	tinymp operator--(int) { tinymp t(*this); *this -= 1; return t; } // NRVO
+	// shift operators
+	tinymp operator<<(std::size_t s) const { tinymp r(*this); r <<= s; return r; } // NRVO
+	tinymp operator>>(std::size_t s) const { tinymp r(*this); r >>= s; return r; } // NRVO
 	// TODO: bit-wise arithmetic
 	// comparison
 	bool absless(const tinymp &other) const noexcept {
