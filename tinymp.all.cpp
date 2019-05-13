@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <vector>
 #include <numeric>
 #include <algorithm>
@@ -11,10 +12,10 @@
 class tinymp
 {
 public:
-	typedef unsigned int value_type;
+	typedef std::uint32_t value_type;
 private:
 	typedef std::numeric_limits<value_type> limits_type;
-	typedef unsigned long long widen_type;
+	typedef std::uint64_t widen_type;
 	typedef std::numeric_limits<widen_type> wlimits_type;
 	typedef std::vector<value_type> vector_type;
 	typedef const std::vector<value_type> cvector_type;
@@ -302,7 +303,7 @@ private:
 			std::size_t pos; // [0, p->sz + p->offset]: (p->sz + p->off) points to p->st[p->sz - 1]
 		public:
 			typedef std::input_iterator_tag iterator_category;
-			typedef value_type value_type;
+			typedef typename T::value_type value_type;
 			typedef std::ptrdiff_t difference_type;
 			typedef const value_type* pointer;
 			typedef const value_type& reference;
