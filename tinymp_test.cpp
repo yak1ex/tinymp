@@ -47,6 +47,31 @@ BOOST_AUTO_TEST_CASE( tinymp_pitfall )
 	BOOST_TEST( 4294967306_tmp != 4294967306 ); // because 4294967306 truncates to 10
 }
 
+BOOST_AUTO_TEST_CASE( tinymp_arith_shift )
+{
+	tinymp t1(1), t2(1), t3(1), t4(1);
+	t3 <<= 100; t4 <<= 100;
+	for(std::size_t i = 1; i < 100; ++i) {
+		t1 *= 2;
+		t2 <<= 1;
+		t3 /= 2;
+		t4 >>= 1;
+		tinymp tt1(t1), tt2(t2), tt3(t3), tt4(t4);
+		for(std::size_t j = 1; j < 100; ++j) {
+			tt1 *= 2;
+			tt2 <<= 1;
+			tt3 /= 2;
+			tt4 >>= 1;
+			BOOST_TEST_CONTEXT( "i = " << i << " j = " << j ) {
+				BOOST_TEST( tt1 == tt2 );
+				BOOST_TEST( tt1 == t2 << j );
+				BOOST_TEST( tt3 == tt4 );
+				BOOST_TEST( tt3 == t4 >> j );
+			}
+		}
+	}
+}
+
 BOOST_AUTO_TEST_CASE( tinymp_arith )
 {
 	const std::size_t digits = 100; // arbitrary
@@ -73,6 +98,12 @@ BOOST_AUTO_TEST_CASE( tinymp_arith )
 		BOOST_TEST_CONTEXT( "i = " << i ) {
 			BOOST_TEST( tt + 1 == t ); // carry
 			BOOST_TEST( t - 1 == tt ); // borrow
+			BOOST_TEST( ++tt == t ); // pre-increment
+			BOOST_TEST( t - 1 == --tt ); // pre-decrement
+			BOOST_TEST( tt++ == t - 1 ); // post-increment
+			BOOST_TEST( tt == t );
+			BOOST_TEST( t == tt-- ); // post-decrement
+			BOOST_TEST( t - 1 == tt );
 		}
 	}
 
