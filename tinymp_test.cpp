@@ -72,9 +72,8 @@ BOOST_AUTO_TEST_CASE( tinymp_arith_shift )
 	}
 }
 
-BOOST_AUTO_TEST_CASE( tinymp_arith )
+BOOST_AUTO_TEST_CASE( tinymp_arith_additive )
 {
-	const std::size_t digits = 100; // arbitrary
 	BOOST_TEST( to_string(tinymp(0xFFFFFFFFUL)+tinymp(0xFFFFFFFFUL)) == "8589934590" );
 	BOOST_TEST( to_string(-tinymp(0xFFFFFFFFUL)+-tinymp(0xFFFFFFFFUL)) == "-8589934590" );
 	BOOST_TEST( to_string(tinymp(0xFFFFFFFFUL)+tinymp(0xFFFFFFFFUL)+tinymp(0)) == "8589934590" );
@@ -106,6 +105,11 @@ BOOST_AUTO_TEST_CASE( tinymp_arith )
 			BOOST_TEST( t - 1 == tt );
 		}
 	}
+}
+
+BOOST_AUTO_TEST_CASE( tinymp_arith_multiplicative )
+{
+	const std::size_t digits = 100; // arbitrary
 
 	BOOST_TEST( to_string(tinymp(1)*100000*100000*100000*100000) == "100000000000000000000" );
 	BOOST_TEST( to_string(-12345678901234567890123467890_tmp) ==  "-12345678901234567890123467890" );
