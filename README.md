@@ -1,5 +1,5 @@
-tinymp: tiny multi-precision integer
-====================================
+tinymp: tiny multi-precision integer for C++11
+==============================================
 
 Motivation
 ----------
