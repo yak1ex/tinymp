@@ -39,6 +39,23 @@ BOOST_AUTO_TEST_CASE( tinymp_construct )
 	BOOST_TEST( tinymp(v.begin(), v.end()) == 10 );
 	v.push_back(1);
 	BOOST_TEST( tinymp(v.begin(), v.end()) == 4294967306_tmp );
+
+	BOOST_TEST( 0b100000000000000000000000000000000_tmp == 0x100000000_tmp );
+	BOOST_TEST( 0B100000000000000000000000000000000_tmp == 0X100000000_tmp );
+	BOOST_TEST( 0b100000000000000000000000000000000_tmp == 040000000000_tmp );
+	BOOST_TEST( 0b100000000000000000000000000000000_tmp == 4294967296_tmp );
+
+// NOTE: If you use C++14, you can use digit separator like 0x1'FFFFFFFF'FFFFFFFF'FFFFFFFF_tmp.
+//        0x1'FFFFFFFF'FFFFFFFF'FFFFFFFF
+	BOOST_TEST( 0x1FFFFFFFFFFFFFFFFFFFFFFFF_tmp == 158456325028528675187087900671_tmp );
+//          0xFFFFFFFF'FFFFFFFF'00000000
+	BOOST_TEST( 0xFFFFFFFFFFFFFFFF00000000_tmp == 79228162514264337589248983040_tmp );
+// 0xFFFFFFFF'FFFFFFFF'00000000'00000000
+	BOOST_TEST( 0xFFFFFFFFFFFFFFFF0000000000000000_tmp == 340282366920938463444927863358058659840_tmp );
+//          0xFFFFFFFF'FFFFFFFF'FFFFFFFF
+	BOOST_TEST( 0xFFFFFFFFFFFFFFFFFFFFFFFF_tmp == 79228162514264337593543950335_tmp );
+// 0xFFFFFFFF'00000000'00000000'00000000
+	BOOST_TEST( 0xFFFFFFFF000000000000000000000000_tmp == 340282366841710300949110269838224261120_tmp );
 }
 
 BOOST_AUTO_TEST_CASE( tinymp_pitfall )
@@ -251,23 +268,103 @@ BOOST_DATA_TEST_CASE( tinymp_comparison, bdata::make(vals), val0 )
 	BOOST_TEST( !(val0 >= val1 ) );
 }
 
+tinymp in(const std::string& s, std::ios_base::fmtflags base = std::ios_base::dec)
+{
+	tinymp t;
+	std::istringstream iss(s);
+	iss.setf(base, std::ios_base::basefield);
+	iss >> t;
+	return t;
+}
+
+std::string out(const tinymp &v, std::ios_base::fmtflags base = std::ios_base::dec, bool upper = false)
+{
+	std::ostringstream oss;
+	oss.setf(base, std::ios_base::basefield);
+	if(upper) oss << std::uppercase;
+	oss << v;
+	return oss.str();
+}
+
 BOOST_AUTO_TEST_CASE( tinymp_io )
 {
 	tinymp t1, t2;
-	std::istringstream iss("123456789012345678901234567890"); iss >> t1;
+	t1 = in("123456789012345678901234567890");
 	BOOST_TEST( to_string(t1) == "123456789012345678901234567890" );
-	iss.str("-123456789012345678901234567890"); iss.seekg(0); iss >> t2;
+	t2 = in("-123456789012345678901234567890");
 	BOOST_TEST( to_string(t2) == "-123456789012345678901234567890" );
 	BOOST_TEST( to_string(t1+t2) == "0" );
 	BOOST_TEST( to_string(t1-t2) == "246913578024691357802469135780" );
-	std::ostringstream oss;
-	oss << t1;
-	BOOST_TEST( oss.str() == to_string(t1) );
-	oss.str("");
-	oss << t2;
-	BOOST_TEST( oss.str() == to_string(t2) );
+	BOOST_TEST( out(t1) == to_string(t1) );
+	BOOST_TEST( out(t2) == to_string(t2) );
 	BOOST_TEST( stotmp("123456789012345678901234567890") == 123456789012345678901234567890_tmp );
 	BOOST_TEST( to_string(123456789012345678901234567890_tmp) == "123456789012345678901234567890" );
+
+	BOOST_TEST( in("100000000", std::ios_base::hex) == in("040000000000", std::ios_base::oct) );
+	BOOST_TEST( in("-100000000", std::ios_base::hex) == in("-040000000000", std::ios_base::oct) );
+	BOOST_TEST( in("100000000", std::ios_base::hex) == in("4294967296") );
+	BOOST_TEST( in("-100000000", std::ios_base::hex) == in("-4294967296") );
+	BOOST_TEST( in("1FFFFFFFFFFFFFFFFFFFFFFFF", std::ios_base::hex) == 158456325028528675187087900671_tmp );
+	BOOST_TEST( in("-1FFFFFFFFFFFFFFFFFFFFFFFF", std::ios_base::hex) == -158456325028528675187087900671_tmp );
+	BOOST_TEST( in("FFFFFFFFFFFFFFFF00000000", std::ios_base::hex) == 79228162514264337589248983040_tmp );
+	BOOST_TEST( in("FFFFFFFFFFFFFFFF0000000000000000", std::ios_base::hex) == 340282366920938463444927863358058659840_tmp );
+	BOOST_TEST( in("FFFFFFFFFFFFFFFFFFFFFFFF", std::ios_base::hex) == 79228162514264337593543950335_tmp );
+	BOOST_TEST( in("FFFFFFFF000000000000000000000000", std::ios_base::hex) == 340282366841710300949110269838224261120_tmp );
+	BOOST_TEST( in("1ffffffffffffffffffffffff", std::ios_base::hex) == 158456325028528675187087900671_tmp );
+	BOOST_TEST( in("-1ffffffffffffffffffffffff", std::ios_base::hex) == -158456325028528675187087900671_tmp );
+	BOOST_TEST( in("ffffffffffffffff00000000", std::ios_base::hex) == 79228162514264337589248983040_tmp );
+	BOOST_TEST( in("ffffffffffffffff0000000000000000", std::ios_base::hex) == 340282366920938463444927863358058659840_tmp );
+	BOOST_TEST( in("ffffffffffffffffffffffff", std::ios_base::hex) == 79228162514264337593543950335_tmp );
+	BOOST_TEST( in("ffffffff000000000000000000000000", std::ios_base::hex) == 340282366841710300949110269838224261120_tmp );
+
+	BOOST_TEST( stotmp("100000000", 16) == stotmp("040000000000", 8) );
+	BOOST_TEST( stotmp("-100000000", 16) == stotmp("-040000000000", 8) );
+	BOOST_TEST( stotmp("100000000", 16) == stotmp("4294967296") );
+	BOOST_TEST( stotmp("-100000000", 16) == stotmp("-4294967296") );
+	BOOST_TEST( stotmp("1FFFFFFFFFFFFFFFFFFFFFFFF", 16) == 158456325028528675187087900671_tmp );
+	BOOST_TEST( stotmp("-1FFFFFFFFFFFFFFFFFFFFFFFF", 16) == -158456325028528675187087900671_tmp );
+	BOOST_TEST( stotmp("FFFFFFFFFFFFFFFF00000000", 16) == 79228162514264337589248983040_tmp );
+	BOOST_TEST( stotmp("FFFFFFFFFFFFFFFF0000000000000000", 16) == 340282366920938463444927863358058659840_tmp );
+	BOOST_TEST( stotmp("FFFFFFFFFFFFFFFFFFFFFFFF", 16) == 79228162514264337593543950335_tmp );
+	BOOST_TEST( stotmp("FFFFFFFF000000000000000000000000", 16) == 340282366841710300949110269838224261120_tmp );
+	BOOST_TEST( stotmp("1ffffffffffffffffffffffff", 16) == 158456325028528675187087900671_tmp );
+	BOOST_TEST( stotmp("-1ffffffffffffffffffffffff", 16) == -158456325028528675187087900671_tmp );
+	BOOST_TEST( stotmp("ffffffffffffffff00000000", 16) == 79228162514264337589248983040_tmp );
+	BOOST_TEST( stotmp("ffffffffffffffff0000000000000000", 16) == 340282366920938463444927863358058659840_tmp );
+	BOOST_TEST( stotmp("ffffffffffffffffffffffff", 16) == 79228162514264337593543950335_tmp );
+	BOOST_TEST( stotmp("ffffffff000000000000000000000000", 16) == 340282366841710300949110269838224261120_tmp );
+
+	BOOST_TEST( out(4294967296_tmp, std::ios_base::hex) == "100000000" );
+	BOOST_TEST( out(-4294967296_tmp, std::ios_base::hex) == "-100000000" );
+	BOOST_TEST( out(4294967296_tmp, std::ios_base::dec) == "4294967296" );
+	BOOST_TEST( out(-4294967296_tmp, std::ios_base::dec) == "-4294967296" );
+	BOOST_TEST( out(4294967296_tmp, std::ios_base::oct) == "40000000000" );
+	BOOST_TEST( out(-4294967296_tmp, std::ios_base::oct) == "-40000000000" );
+	BOOST_TEST( std::string("1FFFFFFFFFFFFFFFFFFFFFFFF") == out(158456325028528675187087900671_tmp, std::ios_base::hex, true) );
+	BOOST_TEST( std::string("-1FFFFFFFFFFFFFFFFFFFFFFFF") == out(-158456325028528675187087900671_tmp, std::ios_base::hex, true) );
+	BOOST_TEST( std::string("FFFFFFFFFFFFFFFF00000000") == out(79228162514264337589248983040_tmp, std::ios_base::hex, true) );
+	BOOST_TEST( std::string("FFFFFFFFFFFFFFFF0000000000000000") == out(340282366920938463444927863358058659840_tmp, std::ios_base::hex, true) );
+	BOOST_TEST( std::string("FFFFFFFFFFFFFFFFFFFFFFFF") == out(79228162514264337593543950335_tmp, std::ios_base::hex, true) );
+	BOOST_TEST( std::string("FFFFFFFF000000000000000000000000") == out(340282366841710300949110269838224261120_tmp, std::ios_base::hex, true) );
+	BOOST_TEST( std::string("1ffffffffffffffffffffffff") == out(158456325028528675187087900671_tmp, std::ios_base::hex) );
+	BOOST_TEST( std::string("-1ffffffffffffffffffffffff") == out(-158456325028528675187087900671_tmp, std::ios_base::hex) );
+	BOOST_TEST( std::string("ffffffffffffffff00000000") == out(79228162514264337589248983040_tmp, std::ios_base::hex) );
+	BOOST_TEST( std::string("ffffffffffffffff0000000000000000") == out(340282366920938463444927863358058659840_tmp, std::ios_base::hex) );
+	BOOST_TEST( std::string("ffffffffffffffffffffffff") == out(79228162514264337593543950335_tmp, std::ios_base::hex) );
+	BOOST_TEST( std::string("ffffffff000000000000000000000000") == out(340282366841710300949110269838224261120_tmp, std::ios_base::hex) );
+
+	BOOST_TEST( to_string(4294967296_tmp, 16) == "100000000" );
+	BOOST_TEST( to_string(-4294967296_tmp, 16) == "-100000000" );
+	BOOST_TEST( to_string(4294967296_tmp, 10) == "4294967296" );
+	BOOST_TEST( to_string(-4294967296_tmp, 10) == "-4294967296" );
+	BOOST_TEST( to_string(4294967296_tmp, 8) == "40000000000" );
+	BOOST_TEST( to_string(-4294967296_tmp, 8) == "-40000000000" );
+	BOOST_TEST( std::string("1ffffffffffffffffffffffff") == to_string(158456325028528675187087900671_tmp, 16) );
+	BOOST_TEST( std::string("-1ffffffffffffffffffffffff") == to_string(-158456325028528675187087900671_tmp, 16) );
+	BOOST_TEST( std::string("ffffffffffffffff00000000") == to_string(79228162514264337589248983040_tmp, 16) );
+	BOOST_TEST( std::string("ffffffffffffffff0000000000000000") == to_string(340282366920938463444927863358058659840_tmp, 16) );
+	BOOST_TEST( std::string("ffffffffffffffffffffffff") == to_string(79228162514264337593543950335_tmp, 16) );
+	BOOST_TEST( std::string("ffffffff000000000000000000000000") == to_string(340282366841710300949110269838224261120_tmp, 16) );
 }
 
 // std::is_swappable and std::is_nothrow_swappable are available only from C++17
