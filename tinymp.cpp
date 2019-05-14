@@ -22,7 +22,7 @@ private:
 
 public:
 	tinymp(value_type val = 0, bool nonneg_ = true): v(1, val), nonneg(val == 0 || nonneg_ ) {}
-	tinymp(const char* p, std::size_t sz) { from_chars(p, sz); }
+	tinymp(const char* p, std::size_t sz, int base = 10) { from_chars(p, sz, base); }
 	template<typename InIt>
 	tinymp(InIt it1, InIt it2): v(it1, it2), nonneg(true) {
 		if(v.size() == 0) v.push_back(0);
@@ -178,8 +178,9 @@ public:
 						top += other.v[other.v.size() - 2] >> (limits_type::digits - bits);
 					}
 				}
-				value_type candidate = res / top;
-				if(candidate > 0) --candidate;
+				widen_type candidate = res / top; // candidate may exceed limits_type::max()
+				--candidate; // res >= top if !absless(residual.v, coffseter_type(other.v, idxr))
+				candidate = std::min<widen_type>(candidate, limits_type::max());
 				auto temp = other * candidate;
 				while(candidate == 0 || !absless(residual.v, offseter_type(temp.v, idxr))) {
 					++candidate;
@@ -281,31 +282,34 @@ public:
 	static inline tinymp literal()
 	{
 		std::string s({c...});
-		return tinymp(s.data(), s.size()); // RVO
+		return tinymp(s.data(), s.size(), 0); // RVO
 	}
 	// I/O
-	static inline tinymp stotmp(const std::string &s) {
-		return tinymp(s.data(), s.size()); // RVO
+	static inline tinymp stotmp(const std::string &s, int base = 10) {
+		return tinymp(s.data(), s.size(), base); // RVO
 	}
 	friend inline std::istream& operator>>(std::istream &is, tinymp& v) {
 		std::string s;
 		is >> s;
-		v.from_chars(s.data(), s.size());
+		int base = (is.flags() & std::ios_base::oct) ? 8 : (is.flags() & std::ios_base::hex) ? 16 : 10;
+		v.from_chars(s.data(), s.size(), base);
 		return is;
 	}
-	friend inline std::string to_string(tinymp v) {
+	friend inline std::string to_string(tinymp v, int base = 10, bool upper = false) {
 		std::string s;
 		bool negative = !v.nonneg;
 		if(v.is_zero()) s = "0";
 		else {
 			if(negative) s = "-";
-			while(!v.is_zero()) { auto t = v.div_(10); s.push_back(t.second.v[0] + '0'); }
+			while(!v.is_zero()) { auto t = v.div_(base); s.push_back(t.second.v[0] + (t.second.v[0] >= 10 ? (upper ? 'A' : 'a') - 10 : '0')); }
 			std::reverse(s.begin() + (negative ? 1 : 0), s.end());
 		}
 		return s; // NRVO
 	}
 	friend inline std::ostream& operator<<(std::ostream &os, const tinymp& v) {
-		return os << to_string(v);
+		int base = (os.flags() & std::ios_base::oct) ? 8 : (os.flags() & std::ios_base::hex) ? 16 : 10;
+		bool upper = (os.flags() & std::ios_base::uppercase) != 0;
+		return os << to_string(v, base, upper);
 	}
 
 private:
@@ -430,7 +434,7 @@ private:
 	bool is_zero() const noexcept {
 		return v.size() == 1 && v[0] == 0;
 	}
-	tinymp& from_chars(const char* p, std::size_t size) {
+	tinymp& from_chars(const char* p, std::size_t size, int base = 10) {
 		if(size == 0) return *this; // might be better to throw
 		auto it = p, it_end = p + size;
 		*this = 0;
@@ -439,11 +443,40 @@ private:
 			negative = true;
 			++it;
 		}
+		if(base == 0 && it != it_end) {
+			if (*it == '0') {
+				++it;
+				if(it != it_end) {
+					switch(*it) {
+					case 'b':
+					case 'B':
+						base = 2;
+						++it;
+						break;
+					case 'x':
+					case 'X':
+						base = 16;
+						++it;
+						break;
+					default:
+						base = 8;
+						break;
+					}
+				}
+			} else base = 10;
+		}
 		while(it != it_end) {
+			// NOTE: no consistency check
 			if('0' <= *it && *it <= '9') {
-				*this *= 10;
+				*this *= base;
 				*this += (*it - '0');
-			} // otherwise, might be better to throw
+			} else if('A' <= *it && *it <= 'Z') {
+				*this *= base;
+				*this += 10 + (*it - 'A');
+			} else if('a' <= *it && *it <= 'z') {
+				*this *= base;
+				*this += 10 + (*it - 'a');
+			}
 			++it;
 		}
 		if(negative) flip_();
@@ -455,9 +488,9 @@ inline tinymp operator"" _tmp()
 {
 	return tinymp::literal<c...>(); // RVO
 }
-inline tinymp stotmp(const std::string& s)
+inline tinymp stotmp(const std::string& s, int base = 10)
 {
-	return tinymp::stotmp(s); // RVO
+	return tinymp::stotmp(s, base); // RVO
 }
 namespace std {
 	template<> struct hash<tinymp> { std::size_t operator()(const tinymp& v) const noexcept { return v.hash(); } };
