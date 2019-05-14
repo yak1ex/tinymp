@@ -186,8 +186,9 @@ public:
 						top += other.v[other.v.size() - 2] >> (limits_type::digits - bits);
 					}
 				}
-				value_type candidate = res / top;
-				if(candidate > 0) --candidate;
+				widen_type candidate = res / top; // candidate may exceed limits_type::max()
+				--candidate; // res >= top if !absless(residual.v, coffseter_type(other.v, idxr))
+				candidate = std::min<widen_type>(candidate, limits_type::max());
 				auto temp = other * candidate;
 				while(candidate == 0 || !absless(residual.v, offseter_type(temp.v, idxr))) {
 					++candidate;
