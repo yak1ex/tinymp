@@ -28,10 +28,11 @@ coverage: run
 	$(LCOV) $(LCOVFLAGS)
 	$(GENHTML) $(GENHTMLFLAGS)
 
-ut.exe: tinymp_test.o
+ut.exe: tinymp_test.o rational_test.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ -lboost_test_exec_monitor -lboost_timer
 
 tinymp_test.o: tinymp.all.cpp
+rational_test.o: rational.cpp
 
 tinymp.cpp: tinymp.all.cpp
 	unifdef -x 2 -UTINYMP_DEBUG -UTINYMP_KARATSUBA tinymp.all.cpp > tinymp.cpp
