@@ -105,7 +105,7 @@ template<typename T, typename U>
 inline bool operator<(const rational_imp<T> &v1, const rational_imp<U> &v2) {
 	typedef typename std::common_type<typename rational_imp<T>::wnumer_type, typename rational_imp<U>::wnumer_type>::type wnumer_type;
 	if(v1.num() < 0 && 0 < v2.num()) return true;
-	if(v1.num() > 0 && 0 < v2.num()) return false;
+	if(v1.num() > 0 && 0 > v2.num()) return false;
 	return static_cast<wnumer_type>(v1.num()) * v2.den() < static_cast<wnumer_type>(v2.num()) * v1.den();
 }
 template<typename T, typename U> inline bool operator>(const rational_imp<T> &v1, const rational_imp<U> &v2) { return v2 < v1; }
