@@ -9,8 +9,8 @@ namespace utf = boost::unit_test;
 
 BOOST_AUTO_TEST_CASE( rational_construct )
 {
-	rational<unsigned short> rs1, rs2(1), rs3(0, 2);
-	rational<unsigned int> ri1, ri2(1), ri3(0, 2), ri4(rs3);
+	rational<short> rs1, rs2(1), rs3(0, 2);
+	rational<int> ri1, ri2(1), ri3(0, 2), ri4(rs3);
 	rational<tinymp> rt1, rt2(5), rt3(1, 5), rt4(-rt3), rt5(rs3), rt6(ri3);
 	BOOST_TEST( rs3 == ri4 );
 	BOOST_TEST( ri4 == rs3 );
@@ -71,8 +71,8 @@ comparison cases[] = {
 
 BOOST_DATA_TEST_CASE( rational_comparison, utf::data::make(cases), input )
 {
-	rational<unsigned short> rsl(input.ln, input.ld), rsr(input.rn, input.rd);
-	rational<unsigned int> ril(input.ln, input.ld), rir(input.rn, input.rd);
+	rational<short> rsl(input.ln, input.ld), rsr(input.rn, input.rd);
+	rational<int> ril(input.ln, input.ld), rir(input.rn, input.rd);
 	switch(input.type) {
 	case LT:
 	        BOOST_TEST( !( rsl == rsr ) );
